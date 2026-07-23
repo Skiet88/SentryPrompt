@@ -24,13 +24,20 @@ This is not merely a UX gap — it is a legal exposure point. Under South Africa
 
 ### 1.3 Individual Scope & Feasibility Justification
 
-This project is scoped for a single-semester, individually-built research prototype, not a production system. Feasibility is supported by the following deliberate scope boundaries:
+This project began as a single-semester, individually-built research prototype with a deliberately narrow scope. Following an Agile-driven scope review (permitted explicitly under the course's methodology, provided the project builds atop this original core rather than diverging from it), the scope was expanded to a full account-based platform: user registration, email verification, login, password reset, persistent conversation history, profile management, and an administrator panel.
 
-- **Single user persona** (the student) — no multi-tenant accounts, institutional admin panels, or analytics dashboards.
-- **Local model backend (Ollama)** — removes dependency on paid API access, rate limits, and external infrastructure, and keeps prompt data on-device during development, which is itself consistent with the privacy-first design goal.
-- **Two thin client surfaces sharing one backend service** — a web chat interface and a browser extension — rather than two independently engineered systems. Both call the same screening API, so the added client surface is a UI concern, not a duplicated architecture.
-- **Screening method comparison, not a single black-box classifier** — the research contribution is a comparison between a rule-based baseline and a context-aware method, which is achievable solo because rule-based detection can be built quickly, giving a working baseline early, with the context-aware method layered on top incrementally.
-- **Bounded sensitive-information taxonomy** — the project targets a defined, documented set of categories (see §3) rather than open-ended "anything sensitive," which keeps both engineering scope and evaluation scope tractable.
+**What did not change:** the research core — a rule-based detector and a context-aware detector running in parallel on every prompt, compared against a hand-labeled test set — remains the actual contribution of the project (§6). The platform expansion sits around that core, not in place of it.
+
+**What changed, and the feasibility trade-off accepted with it:**
+
+- **Multi-user accounts, now in scope** — registration, email verification, login/logout, password reset, and profile management are now required (see REQUIREMENTS.md FR-013–FR-018). This is a real, accepted increase in build time relative to the original single-persona design, taken on knowingly rather than underestimated.
+- **Persistent conversation history, now in scope** — every approved (screened) prompt and its response are stored per-user as a `Conversation`/`Message` pair (REQUIREMENTS.md FR-019–FR-020), encrypted at rest (NFR-011). This is structurally distinct from the evaluation log, which remains content-free (NFR-009) — two data stores, two privacy postures, not a contradiction.
+- **An administrator role and panel, now in scope** — account-level management (status, verification, suspension) and an immutable audit log (FR-021–FR-022), deliberately excluding admin access to the *content* of any user's conversations (NFR-013), preserving the project's own privacy principle even internally.
+- **Local model backend (Ollama)** — unchanged; still removes dependency on paid API access and keeps model inference on-device.
+- **Two thin client surfaces sharing one backend service** — unchanged in principle; the backend now also carries the auth/account/admin services, still as a single shared service rather than duplicated per client.
+- **Screening method comparison, not a single black-box classifier** — unchanged; still the core research question and still achievable solo, independent of the account-layer work around it.
+
+**Honest risk accepted:** the account/auth/admin layer is a materially larger build than the original scope, on the same solo timeline. This is stated here explicitly so it can be referenced directly in the Design Phase Template's Feasibility Assessment (§9.1) rather than surfacing later as an unaddressed gap — see PROJECT_BACKLOG.md's scope-change log for the full increment-by-increment breakdown of what this added.
 
 ---
 
@@ -91,11 +98,14 @@ This preserves student agency (a hard-block system risks being disabled or bypas
 
 ## 5. Out of Scope (This Iteration)
 
-- User accounts / authentication
 - Multi-model support (only Ollama-backed local models)
-- Institutional admin dashboards or reporting
-- Cloud deployment / multi-tenant scaling
+- Institutional-level analytics/reporting dashboards (the admin panel covers account management and audit logging only, not usage analytics)
+- Cloud deployment / multi-tenant scaling across institutions
 - Training a custom model from scratch (context-aware detection may use an existing pretrained model or an LLM-as-judge call, not a model trained from zero)
+- Third-party OAuth/SSO login (email/password only, per FR-013)
+- Admin access to individual users' conversation content (deliberately excluded, not deferred — see NFR-013)
+
+*(Revision note: "User accounts / authentication" and "Institutional admin dashboards" were removed from this list following the scope expansion documented in §1.3 — they are now in scope, not out of it.)*
 
 ---
 

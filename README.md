@@ -20,4 +20,4 @@ Once complete, this project will provide:
 
 ## Status
 
-🚧 In active development — Software Engineering Assignment 3 (ongoing through November).
+🚧 In active development
