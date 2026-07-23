@@ -10,7 +10,7 @@ Higher Education Technology / Data Privacy & AI Safety — see [SPECIFICATION.md
 Students unknowingly expose sensitive personal and institutional data in AI prompts, with no interception mechanism in place before transmission to a third-party model. See [SPECIFICATION.md](./SPECIFICATION.md) for the complete problem statement and POPIA context.
 
 ## Individual Scope & Feasibility
-Single-user research prototype; one shared backend Screening Service consumed by two thin client surfaces (web app, browser extension); local Ollama backend removes external infrastructure dependency. See [SPECIFICATION.md](./SPECIFICATION.md) §1.3 for full justification.
+Research prototype expanded to a full account-based platform (registration, login, persistent conversation history, admin panel) alongside the core screening research; one shared backend consumed by two thin client surfaces (web app, browser extension); local Ollama backend removes external infrastructure dependency. See [SPECIFICATION.md](./SPECIFICATION.md) §1.3 for full justification and the accepted feasibility trade-off.
 
 ---
 
@@ -51,31 +51,45 @@ C4Container
     title Container Diagram — SentryPrompt4
 
     Person(student, "Student", "End user")
+    Person(admin, "System Administrator", "Manages accounts, does not access conversation content")
 
     System_Boundary(promptshield, "SentryPrompt4") {
-        Container(webapp, "Web Chat Application", "React / HTML+JS", "Self-contained chat interface used as the primary research testbed")
+        Container(webapp, "Web Chat Application", "React / HTML+JS", "Self-contained chat interface; also hosts login, registration, profile, and conversation history screens")
         Container(extension, "Browser Extension", "JavaScript, browser extension APIs", "Injects screening into existing AI platform interfaces (ChatGPT, Claude, etc.)")
-        Container(api, "Backend API", "Node.js / Python (FastAPI or Express)", "Receives prompts from either client, orchestrates screening, forwards approved prompts to Ollama")
+        Container(adminui, "Admin Panel", "React / HTML+JS", "Account-level management UI: view/suspend/reinstate users, view audit log. No access to conversation content.")
+        Container(api, "Backend API", "Node.js / Python (FastAPI or Express)", "Receives prompts and account requests, orchestrates screening and auth, forwards approved prompts to Ollama")
+        Container(authsvc, "Auth Service", "Node.js / Python module", "Handles registration, email verification, login/session, password reset, and enforces the admin content-access boundary (NFR-013)")
         Container(screening, "NLP Screening Service", "Python", "Core research artifact: rule-based detector + context-aware detector, returns classification and flagged spans")
-        ContainerDb(logstore, "Evaluation Log Store", "SQLite / JSON file", "Stores anonymized flagged/unflagged prompt records for accuracy evaluation (research requirement)")
+        ContainerDb(appdb, "Application Database", "PostgreSQL / SQLite", "Persists User, Session, Conversation, Message (encrypted), and AdminAuditLog records")
+        ContainerDb(logstore, "Evaluation Log Store", "SQLite / JSON file", "Stores anonymized, content-free flagged/unflagged prompt records for accuracy evaluation — deliberately separate from appdb (NFR-009)")
     }
 
     System_Ext(ollama, "Ollama (Local LLM)", "Generates responses to approved prompts")
     System_Ext(thirdparty, "Third-Party AI Platform", "Existing AI chat interface in the browser")
+    System_Ext(emailsvc, "Email Delivery", "SMTP/local mail relay for verification and password-reset emails")
 
-    Rel(student, webapp, "Uses")
+    Rel(student, webapp, "Uses — chat, account, and history features")
     Rel(student, extension, "Uses, while browsing")
+    Rel(admin, adminui, "Uses — account management only")
     Rel(extension, thirdparty, "Reads/intercepts prompt text typed into")
 
-    Rel(webapp, api, "Sends prompt for screening / chat", "HTTPS/JSON")
+    Rel(webapp, api, "Sends prompt / account / history requests", "HTTPS/JSON")
     Rel(extension, api, "Sends prompt for screening", "HTTPS/JSON")
+    Rel(adminui, api, "Sends account management requests", "HTTPS/JSON")
+
+    Rel(api, authsvc, "Delegates registration/login/session/reset to", "internal call")
+    Rel(authsvc, appdb, "Reads/writes User, Session, token records")
+    Rel(authsvc, emailsvc, "Sends verification and reset emails via")
 
     Rel(api, screening, "Requests classification of prompt text", "internal call")
     Rel(api, ollama, "Forwards approved prompt to", "HTTP (local)")
-    Rel(api, logstore, "Writes screening result record to")
+    Rel(api, appdb, "Writes approved prompt/response as Message, within a Conversation")
+    Rel(api, logstore, "Writes content-free screening result record to")
+    Rel(api, webapp, "Returns response / account / history data to")
+    Rel(api, extension, "Returns screening result to")
 ```
 
-**Design note:** Because both client surfaces call the same Backend API and Screening Service, adding the browser extension does not duplicate the research logic — it only adds a second thin integration point. This keeps the system honest to the "individual scope" feasibility constraint.
+**Design note:** Because both client surfaces still call the same Backend API and Screening Service, the platform expansion adds two new containers (Auth Service, Admin Panel) and a database, but does not duplicate the research logic — the screening pipeline is unchanged and remains the single source of truth for detection, exactly as before.
 
 ---
 
@@ -110,19 +124,25 @@ C4Component
 
 **Research note:** The Rule-Based Detector and Context-Aware Detector run independently and both feed the Decision Aggregator. This is intentional — running both on every prompt (rather than only falling back to context-aware when rules miss) is what enables the precision/recall comparison described in SPECIFICATION.md §6.
 
+**Gap closed from Increment 2A:** the original diagram had only one entry point into the Screening Service (via the live Backend API), but FR-012 requires evaluation to run independent of live usage. An **Evaluation Harness** (a standalone script, not shown as a separate C4 component since it is a research tool rather than a deployable service) calls the Screening Service's `preprocessor` directly using the same interface the Backend API uses, bypassing `api`, `webapp`, and `extension` entirely. This is the mechanism behind UC8 in USE_CASES.md.
+
 ---
 
 ## End-to-End Component Summary
 
 | Layer | Component | Responsibility |
 |---|---|---|
-| Client | Web Chat Application | Primary UI, full round-trip testbed |
+| Client | Web Chat Application | Primary UI — chat, login/registration, profile, conversation history |
 | Client | Browser Extension | Screens prompts on third-party AI platforms in place |
-| Service | Backend API | Orchestration, routing between clients, screening, and Ollama |
+| Client | Admin Panel | Account-level management UI; no conversation-content access |
+| Service | Backend API | Orchestration, routing between clients, screening, auth, and Ollama |
+| Service | Auth Service | Registration, verification, login/session, password reset |
 | Service | NLP Screening Service | Core research logic — detection, aggregation, explanation |
-| Data | Evaluation Log Store | Supports accuracy/false-positive evaluation |
+| Data | Application Database | Persists User/Session/Conversation/Message (encrypted)/AdminAuditLog |
+| Data | Evaluation Log Store | Content-free, supports accuracy/false-positive evaluation — deliberately separate from Application Database |
 | External | Ollama | Local LLM — generates responses to approved prompts |
 | External | Third-Party AI Platform | Existing tool the extension screens prompts for, without replacing it |
+| External | Email Delivery | Sends verification and password-reset emails |
 
 ## Links
 - [README.md](./README.md)
