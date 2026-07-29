@@ -54,14 +54,14 @@ C4Container
     Person(admin, "System Administrator", "Manages accounts, does not access conversation content")
 
     System_Boundary(promptshield, "SentryPrompt4") {
-        Container(webapp, "Web Chat Application", "React / HTML+JS", "Self-contained chat interface; also hosts login, registration, profile, and conversation history screens")
+        Container(webapp, "Web Chat Application", "React (Vite) + Tailwind CSS", "Self-contained chat interface; also hosts login, registration, profile, and conversation history screens. Responsive: same codebase serves desktop and mobile viewports.")
         Container(extension, "Browser Extension", "JavaScript, browser extension APIs", "Injects screening into existing AI platform interfaces (ChatGPT, Claude, etc.)")
-        Container(adminui, "Admin Panel", "React / HTML+JS", "Account-level management UI: view/suspend/reinstate users, view audit log. No access to conversation content.")
-        Container(api, "Backend API", "Node.js / Python (FastAPI or Express)", "Receives prompts and account requests, orchestrates screening and auth, forwards approved prompts to Ollama")
-        Container(authsvc, "Auth Service", "Node.js / Python module", "Handles registration, email verification, login/session, password reset, and enforces the admin content-access boundary (NFR-013)")
+        Container(adminui, "Admin Panel", "React (Vite) + Tailwind CSS", "Account-level management UI: view/suspend/reinstate users, view audit log. No access to conversation content.")
+        Container(api, "Backend API", "Python (FastAPI)", "Receives prompts and account requests, orchestrates screening and auth, forwards approved prompts to Ollama. FastAPI chosen for automatic OpenAPI/Swagger generation (feeds Increment 7) and a single-language backend alongside the Screening Service.")
+        Container(authsvc, "Auth Service", "Python module (FastAPI)", "Handles registration, email verification, login/session, password reset, and enforces the admin content-access boundary (NFR-013)")
         Container(screening, "NLP Screening Service", "Python", "Core research artifact: rule-based detector + context-aware detector, returns classification and flagged spans")
-        ContainerDb(appdb, "Application Database", "PostgreSQL / SQLite", "Persists User, Session, Conversation, Message (encrypted), and AdminAuditLog records")
-        ContainerDb(logstore, "Evaluation Log Store", "SQLite / JSON file", "Stores anonymized, content-free flagged/unflagged prompt records for accuracy evaluation — deliberately separate from appdb (NFR-009)")
+        ContainerDb(appdb, "Application Database", "SQLite", "Persists User, Session, Conversation, Message (encrypted), and AdminAuditLog records. SQLite chosen over PostgreSQL: no separate DB server to install/run, consistent with NFR-003 (local-only) and NFR-004 (single-command deployable).")
+        ContainerDb(logstore, "Evaluation Log Store", "SQLite", "Stores anonymized, content-free flagged/unflagged prompt records for accuracy evaluation — deliberately separate from appdb (NFR-009)")
     }
 
     System_Ext(ollama, "Ollama (Local LLM)", "Generates responses to approved prompts")
@@ -109,7 +109,7 @@ C4Component
         Component(explainer, "Explanation Generator", "Python (template-based)", "Produces plain-language explanation of why a span was flagged, shown to the student")
     }
 
-    Container(api, "Backend API", "Node.js / Python", "Calls the screening service and returns results to the client")
+    Container(api, "Backend API", "Python (FastAPI)", "Calls the screening service and returns results to the client")
     System_Ext(ollama, "Ollama (Local LLM)", "Used by context-aware detector as an LLM-as-judge, and separately for approved-prompt responses")
 
     Rel(api, preprocessor, "Sends raw prompt text to")
@@ -144,6 +144,28 @@ C4Component
 | External | Third-Party AI Platform | Existing tool the extension screens prompts for, without replacing it |
 | External | Email Delivery | Sends verification and password-reset emails |
 
+## Tech Stack Decision (resolved — previously left open as either/or)
+
+Earlier drafts of this diagram deliberately left the implementation language/framework open (e.g. "React / HTML+JS", "Node.js / Python", "PostgreSQL / SQLite") until Increments 6/7 forced the decision. It is now resolved:
+
+| Layer | Choice | Why |
+|---|---|---|
+| Web Chat Application, Admin Panel | React (Vite) + Tailwind CSS | One responsive codebase for both desktop and mobile viewports, per explicit preference — avoids maintaining separate mobile/desktop UIs. Tailwind's mobile-first breakpoints keep this achievable without hand-written media queries per component. |
+| Backend API, Auth Service | Python (FastAPI) | Matches the Screening Service's existing Python (NFR-005/006 context), avoiding a second language/runtime for a solo capstone. FastAPI generates OpenAPI/Swagger documentation automatically, directly feeding Increment 7's deliverable. |
+| Application Database | SQLite | No separate database server to install or run — consistent with NFR-003 (local-only) and NFR-004 (single-command deployable). PostgreSQL was considered and rejected as unnecessary operational complexity for a single-user local prototype. |
+| Evaluation Log Store | SQLite | Same reasoning as above; kept in a separate database file from the Application Database per NFR-009. |
+| Browser Extension | JavaScript, browser extension APIs | Not a choice — Chrome/Firefox extensions require JavaScript; this is a platform constraint, not a stack preference. |
+
+**Honest trade-off, stated plainly:** choosing React over plain HTML+JS means the project now has two toolchains — a Python virtual environment for the backend/screening service, and an npm/Node build step (Vite) for the frontend, even though the backend itself has no Node.js dependency. NFR-004's "single-command or scripted setup" requirement now needs to document both steps (e.g. a top-level script that runs `npm install && npm run build` for the frontend and sets up the Python venv/dependencies for the backend), not assume one covers the other.
+
+---
+
 ## Links
 - [README.md](./README.md)
 - [SPECIFICATION.md](./SPECIFICATION.md)
+- [REQUIREMENTS.md](./REQUIREMENTS.md)
+- [DOMAIN_MODEL.md](./DOMAIN_MODEL.md)
+- [AUTH_DESIGN.md](./AUTH_DESIGN.md)
+- [ERD.md](./ERD.md)
+
+---
