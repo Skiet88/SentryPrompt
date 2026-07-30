@@ -11,7 +11,7 @@
 |---|---|---|
 | **FR-001** — reject empty prompt input | `ScreeningService.screen_prompt()` (SERVICE_LAYER.md §1); 400 error response (SERVICE_LAYER.md §3) | Validation raised before either detector is invoked, so no wasted detection cycle occurs; verified by TC-011 |
 | **FR-002** — rule-based detection | Rule-Based Detector component (ARCHITECTURE.md Level 3); `RulePattern` entity (DOMAIN_MODEL.md) | Pattern rules live in a separate, editable entity rather than inline code (also satisfies NFR-005); verified by TC-001, TC-002 |
-| **FR-003** — context-aware detection | Context-Aware Detector component (ARCHITECTURE.md); MODEL_ARCHITECTURE.md (llama3.1 LLM-as-judge) | Model choice, prompt contract, and inference parameters fully specified; verified by TC-003 |
+| **FR-003** — context-aware detection | Context-Aware Detector component (ARCHITECTURE.md); MODEL_ARCHITECTURE.md (llama3.2 LLM-as-judge) | Model choice, prompt contract, and inference parameters fully specified; verified by TC-003 |
 | **FR-004** — parallel, independent detection | `ScreeningService.screen_prompt()`'s `asyncio.gather()` call (SERVICE_LAYER.md); `ScreeningResult` storing both verdicts as separate fields (DOMAIN_MODEL.md) | Independence is structural (two fields, one concurrent call), not just described in prose; verified by TC-004 |
 | **FR-005** — highlight flagged spans | `FlaggedSpan` entity; API response `flags[].span` field (SERVICE_LAYER.md §3) | Exact substring returned, not a generic "flagged" flag; verified by TC-005 |
 | **FR-006** — plain-language explanation | Explanation Generator component (ARCHITECTURE.md); API response `explanation` field | Category-specific, non-technical wording; verified by TC-012 |
@@ -45,7 +45,7 @@
 | **NFR-005** — configurable rule patterns | `RulePattern` entity, separate from detection logic code | Same artefact as FR-002 |
 | **NFR-006** — unit test coverage of the five taxonomy categories | TEST_CASES.md's Requirement Coverage Matrix (§3) | Confirms all categories have at least one dedicated test case |
 | **NFR-007** — screening service independently scalable | NLP Screening Service as its own Container (ARCHITECTURE.md), separate from the Backend API | Architecturally separable even though NFR-007 explicitly targets single-user load for this prototype |
-| **NFR-008** — no external transmission during PromptShield's own screening/inference | Corrected wording from Increment 2A; MODEL_ARCHITECTURE.md's local `llama3.1` inference | Verified by TC-NF-002, deliberately scoped to exclude the extension's legitimate external forwarding (FR-010) |
+| **NFR-008** — no external transmission during PromptShield's own screening/inference | Corrected wording from Increment 2A; MODEL_ARCHITECTURE.md's local `llama3.2` inference | Verified by TC-NF-002, deliberately scoped to exclude the extension's legitimate external forwarding (FR-010) |
 | **NFR-009** — evaluation log is content-free | `EvaluationLogEntry` schema (DOMAIN_MODEL.md); no `rawText` field exists on the entity | Verified by TC-009; enforced structurally, per FR-011 |
 | **NFR-010** — screening completes within 2 seconds | `ScreeningService`'s parallel `asyncio.gather()` design | **Not yet empirically verified** — MODEL_ARCHITECTURE.md §4 explicitly flags this as unbenchmarked; TC-NF-001 exists but has not been run |
 | **NFR-011** — message content encrypted at rest | `MessageRepository.save()` encrypts before storage (REPOSITORY_DESIGN.md §3.2) | Enforced inside the repository, not the service layer — cannot be bypassed by a careless caller |
