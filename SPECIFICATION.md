@@ -16,11 +16,28 @@ Students at higher education institutions increasingly rely on generative AI too
 
 ### 1.2 Problem Statement
 
-Students routinely and unknowingly submit sensitive personal and institutional information to AI models through ordinary prompts — student numbers, ID numbers, medical details, financial information, disciplinary records, or confidential institutional data. No mechanism currently exists to intercept, flag, or mitigate this exposure **before** it leaves the student's device and reaches a third-party model.
+Students routinely and unknowingly submit sensitive personal and institutional information to AI models through ordinary prompts — student numbers, ID numbers, medical details, financial information, disciplinary records, or confidential institutional data. Kim, Park and Lee (2024) found that more than 70% of a sample of over one million real human–LLM conversations contained personally identifiable information — this is not an edge case, but the norm. A high-profile real-world instance made the risk concrete: employees at Samsung Electronics submitted confidential source code and internal meeting notes to ChatGPT, resulting in an irreversible leak of proprietary data to a third-party provider's servers, after which Samsung banned generative AI tools outright (Bloomberg, 2023) — an extreme response that forecloses the benefits students and staff genuinely gain from these tools, rather than addressing the underlying exposure.
 
-This is not merely a UX gap — it is a legal exposure point. Under South Africa's **Protection of Personal Information Act (POPIA)**, institutions and, in some cases, individuals bear responsibility for how personal information is processed and disclosed. Existing commercial solutions (e.g. Casper, Preempt) are designed for enterprise data-loss-prevention contexts and are not accessible, affordable, or appropriately scoped for individual students or academic institutions.
+No mechanism currently exists to intercept, flag, or mitigate this exposure **before** it leaves the student's device and reaches a third-party model, specifically within a higher-education context.
+
+This is not merely a UX gap — it is a legal exposure point. Under South Africa's **Protection of Personal Information Act** (Republic of South Africa, 2013), institutions bear responsibility for how personal information is processed and disclosed, yet no technical standard currently governs how students interact with third-party AI tools in a manner compliant with this legislation (Roos, 2024). Existing technical solutions — Casper (Mireshghallah et al., 2024), a prompt-sanitization system for web-based LLMs, and Preempt (Chen et al., 2025), which applies encryption and differential privacy at inference time — are valuable contributions, but neither was designed with a student user in mind, and neither accounts for the academic and institutional context in which a prompt is written. Sharma, Das and Gupta (2024) and Contextual AI Lab (2025) demonstrate that sensitivity is often determined by surrounding context rather than content in isolation — a dimension current tools do not adequately address, and the dimension this project's context-aware detector is specifically built to test.
+
+**The gap this project addresses, directly from the approved research proposal:** no existing system has been designed specifically to detect and mitigate sensitive information in student AI prompts within a higher-education environment, using context-aware NLP that understands the academic and institutional setting of the user.
 
 **Core research question:** *Can a lightweight, context-aware NLP screening layer meaningfully detect and mitigate sensitive information in student-authored AI prompts before transmission, without materially disrupting the student's workflow?*
+
+**Research aim (verbatim from the approved Research Methods proposal):** to develop a context-aware NLP system capable of detecting and mitigating sensitive information in student AI prompts within higher education institutions, in order to protect student data and promote responsible AI usage.
+
+**Research objectives and how each is addressed by this project, stated honestly rather than assumed:**
+
+| # | Objective (from the approved proposal) | Addressed by |
+|---|---|---|
+| 1 | Assess the level of awareness among higher-education students regarding the risks of sharing sensitive information through AI prompts | **Not addressed by this design-phase build** — this is a survey/awareness study, distinct from the system being designed here. Noted honestly as outside this project's individual technical scope, not silently dropped. |
+| 2 | Investigate the types of sensitive information students commonly include in AI prompts | Directly informs the five-category taxonomy in §3 below, and the hand-labeled `TEST_SET.csv` (40 entries spanning exactly these categories) |
+| 3 | Implement mitigation mechanisms that protect students from unintentional data exposure | The screening pipeline itself (FR-001–FR-009): highlight, explain, and the edit/send-anyway/cancel decision (AUTH_DESIGN.md, working frontend prototype) |
+| 4 | Propose a context-aware NLP model capable of detecting sensitive information in student AI prompts in real time | MODEL_ARCHITECTURE.md — the LLM-as-judge context-aware detector, run in parallel with the rule-based detector |
+
+**Honest scope note:** Objective 1 is a research-methods question (student awareness, likely requiring a survey instrument and ethics clearance) that sits outside what a solo, one-semester design-and-build project can also deliver alongside Objectives 2–4. This project's system design is built to serve Objectives 2–4 directly; Objective 1 is acknowledged here rather than quietly ignored, and would be genuine future work alongside this system, not a gap in this document.
 
 ### 1.3 Individual Scope & Feasibility Justification
 
