@@ -1,7 +1,7 @@
 # STATE_DIAGRAMS.md — SentryPrompt4
 
 **Project:** SentryPrompt4
-**Traceability:** State machines below model every lifecycle-bearing entity identified in DOMAIN_MODEL.md. Two state machines cover the original research-domain flow (`Prompt` → `ScreeningResult`), and three cover the platform-layer scope expansion (`User`, `Session`, verification/reset tokens), per PROJECT_BACKLOG.md Increment 4's brief: *"now including account lifecycle (registration → verified → active → suspended)."*
+**Traceability:** State machines below model every lifecycle-bearing entity identified in ../architecture/DOMAIN_MODEL.md. Two state machines cover the original research-domain flow (`Prompt` → `ScreeningResult`), and three cover the platform-layer scope expansion (`User`, `Session`, verification/reset tokens), per ../requirements/PROJECT_BACKLOG.md Increment 4's brief: *"now including account lifecycle (registration → verified → active → suspended)."*
 
 **Board note on scope:** four state machines are specified rather than one combined diagram, because `Prompt`, `User`, `Session`, and the token entities each have genuinely independent lifecycles that run on different triggers (a prompt's state resolves in seconds; a user's account state persists indefinitely). Merging them into a single diagram would obscure more than it clarifies — a documented judgment call, not an oversight.
 
@@ -100,8 +100,8 @@ stateDiagram-v2
 ```
 
 **Design notes:**
-- `EmailVerificationPending` is deliberately not a dead-end while waiting — login is still permitted (a usability decision recorded in AUTH_DESIGN.md), only prompt submission (the sensitive action) is gated.
-- `Deleted` is terminal and unreachable from `EmailVerificationPending`/`Registered` directly in this diagram — an unverified account can still self-delete via the profile/account flow, but that path is out of scope for this diagram since FR-020 is specified against a logged-in student; a supplementary note in AUTH_DESIGN.md's follow-up (tracked in PROJECT_BACKLOG.md) should confirm unverified accounts can also be deleted, since POPIA's erasure right shouldn't depend on verification status.
+- `EmailVerificationPending` is deliberately not a dead-end while waiting — login is still permitted (a usability decision recorded in ../architecture/AUTH_DESIGN.md), only prompt submission (the sensitive action) is gated.
+- `Deleted` is terminal and unreachable from `EmailVerificationPending`/`Registered` directly in this diagram — an unverified account can still self-delete via the profile/account flow, but that path is out of scope for this diagram since FR-020 is specified against a logged-in student; a supplementary note in ../architecture/AUTH_DESIGN.md's follow-up (tracked in ../requirements/PROJECT_BACKLOG.md) should confirm unverified accounts can also be deleted, since POPIA's erasure right shouldn't depend on verification status.
 
 ---
 
@@ -158,7 +158,7 @@ stateDiagram-v2
 ```
 
 **Design notes:**
-- One diagram covers both token types because `EmailVerificationToken` and `PasswordResetToken` share an identical attribute shape and lifecycle in DOMAIN_MODEL.md (`tokenId`, `userId`, `token`, `expiresAt`, `used`) — duplicating an identical diagram for each would add length without adding information, so this is documented once with both entities named explicitly.
+- One diagram covers both token types because `EmailVerificationToken` and `PasswordResetToken` share an identical attribute shape and lifecycle in ../architecture/DOMAIN_MODEL.md (`tokenId`, `userId`, `token`, `expiresAt`, `used`) — duplicating an identical diagram for each would add length without adding information, so this is documented once with both entities named explicitly.
 
 ---
 
@@ -167,15 +167,15 @@ stateDiagram-v2
 | Concern raised | Resolution |
 | --- | --- |
 | Why not one merged diagram for all lifecycle entities? | Independent trigger sources (student action, admin action, timer expiry, detector output) make a single diagram unreadable at this entity count; four focused diagrams trace more cleanly to their respective FR-IDs. |
-| Does the `Prompt` diagram contradict NFR-009 (no raw text persisted)? | No — the diagram models `status`/`verdict` transitions only; it does not imply `rawText` is stored at any state, consistent with DOMAIN_MODEL.md's explicit in-memory-only note. |
-| Is `Suspended → Deleted` a real permitted transition, or an oversight? | Real and intentional — FR-020 gives the student, not the admin, the deletion right, and nothing in REQUIREMENTS.md conditions that right on account status. |
-| Gap acknowledged, not solved here | Unverified-account self-deletion path (noted in §2) is deferred to the same AUTH_DESIGN.md follow-up already tracked in PROJECT_BACKLOG.md for FR-018/FR-020/NFR-014. |
+| Does the `Prompt` diagram contradict NFR-009 (no raw text persisted)? | No — the diagram models `status`/`verdict` transitions only; it does not imply `rawText` is stored at any state, consistent with ../architecture/DOMAIN_MODEL.md's explicit in-memory-only note. |
+| Is `Suspended → Deleted` a real permitted transition, or an oversight? | Real and intentional — FR-020 gives the student, not the admin, the deletion right, and nothing in ../requirements/REQUIREMENTS.md conditions that right on account status. |
+| Gap acknowledged, not solved here | Unverified-account self-deletion path (noted in §2) is deferred to the same ../architecture/AUTH_DESIGN.md follow-up already tracked in ../requirements/PROJECT_BACKLOG.md for FR-018/FR-020/NFR-014. |
 
 ## Links
 
 - [ACTIVITY_DIAGRAMS.md](https://github.com/Skiet88/SentryPrompt/blob/main/ACTIVITY_DIAGRAMS.md)
-- [DOMAIN_MODEL.md](https://github.com/Skiet88/SentryPrompt/blob/main/DOMAIN_MODEL.md)
-- [REQUIREMENTS.md](https://github.com/Skiet88/SentryPrompt/blob/main/REQUIREMENTS.md)
-- [USE_CASES.md](https://github.com/Skiet88/SentryPrompt/blob/main/USE_CASES.md)
-- [AUTH_DESIGN.md](https://github.com/Skiet88/SentryPrompt/blob/main/AUTH_DESIGN.md)
-- [PROJECT_BACKLOG.md](https://github.com/Skiet88/SentryPrompt/blob/main/PROJECT_BACKLOG.md)
+- [../architecture/DOMAIN_MODEL.md](https://github.com/Skiet88/SentryPrompt/blob/main/../architecture/DOMAIN_MODEL.md)
+- [../requirements/REQUIREMENTS.md](https://github.com/Skiet88/SentryPrompt/blob/main/../requirements/REQUIREMENTS.md)
+- [../requirements/USE_CASES.md](https://github.com/Skiet88/SentryPrompt/blob/main/../requirements/USE_CASES.md)
+- [../architecture/AUTH_DESIGN.md](https://github.com/Skiet88/SentryPrompt/blob/main/../architecture/AUTH_DESIGN.md)
+- [../requirements/PROJECT_BACKLOG.md](https://github.com/Skiet88/SentryPrompt/blob/main/../requirements/PROJECT_BACKLOG.md)

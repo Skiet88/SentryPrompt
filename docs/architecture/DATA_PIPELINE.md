@@ -1,9 +1,9 @@
 # DATA_PIPELINE.md — SentryPrompt4
 
 **Increment:** 5 — Data Model: ERD & AI Data Pipeline (second artifact)
-**Traces to:** FR-004, FR-011, FR-012 (REQUIREMENTS.md); ERD.md (schema this pipeline reads/writes); DOMAIN_MODEL.md §1 (`TestSetEntry` independence); Increment 2A gap (no documented offline evaluation entry point)
+**Traces to:** FR-004, FR-011, FR-012 (../requirements/REQUIREMENTS.md); ERD.md (schema this pipeline reads/writes); DOMAIN_MODEL.md §1 (`TestSetEntry` independence); Increment 2A gap (no documented offline evaluation entry point)
 
-This document specifies **how data moves** through SentryPrompt4's two structurally separate paths — the live path (real student prompts) and the evaluation path (offline, hand-labeled test set). ERD.md specifies the schema these paths read and write; this document specifies the flow itself, kept as a distinct artifact per this increment's own scope in PROJECT_BACKLOG.md.
+This document specifies **how data moves** through SentryPrompt4's two structurally separate paths — the live path (real student prompts) and the evaluation path (offline, hand-labeled test set). ERD.md specifies the schema these paths read and write; this document specifies the flow itself, kept as a distinct artifact per this increment's own scope in ../requirements/PROJECT_BACKLOG.md.
 
 ---
 
@@ -71,7 +71,7 @@ This table exists so the independence claim (DOMAIN_MODEL.md, Increment 2A) has 
 - Deletion/cascade behavior for `Message`/`Conversation` rows — tracked as a follow-up alongside the deferred FR-020 flow already flagged in AUTH_DESIGN.md and ERD.md.
 
 ## Links
-- [ERD.md](./ERD.md)
-- [DOMAIN_MODEL.md](./DOMAIN_MODEL.md)
-- [REQUIREMENTS.md](./REQUIREMENTS.md)
-- [PROJECT_BACKLOG.md](./PROJECT_BACKLOG.md)
+- [ERD.md](ERD.md)
+- [DOMAIN_MODEL.md](DOMAIN_MODEL.md)
+- [../requirements/REQUIREMENTS.md](../requirements/../requirements/REQUIREMENTS.md)
+- [../requirements/PROJECT_BACKLOG.md](../requirements/../requirements/PROJECT_BACKLOG.md)

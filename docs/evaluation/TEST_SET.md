@@ -1,7 +1,7 @@
 # TEST_SET.md — Hand-Labeled Evaluation Set (SentryPrompt4)
 
-**Traces to:** FR-012, SPECIFICATION.md §6 (Evaluation Approach)
-**Companion file:** `TEST_SET.csv` — same data in machine-readable form for the evaluation harness (`TestSetEntry` entity, per DOMAIN_MODEL.md).
+**Traces to:** FR-012, ../requirements/SPECIFICATION.md §6 (Evaluation Approach)
+**Companion file:** `TEST_SET.csv` — same data in machine-readable form for the evaluation harness (`TestSetEntry` entity, per ../architecture/DOMAIN_MODEL.md).
 
 **Important note on the data itself:** every entry below is fabricated. No real student, staff member, or institution is referenced. ID numbers are format-plausible but not valid real identifiers; names are generic placeholders.
 
@@ -11,7 +11,7 @@
 
 - **40 entries total**: ~6 per taxonomy category (30) + 10 clean/negative entries.
 - **Ground truth labeling is binary per entry** (flag / no-flag) plus a category tag, assigned by manual judgment before either detector is run — this is what makes it a genuine test set rather than a self-fulfilling one.
-- **Each category includes both "easy" and "hard" cases** deliberately, not just obvious examples — a test set made only of obvious cases would make both detectors look artificially good and defeat the point of the comparison in SPECIFICATION.md §6.
+- **Each category includes both "easy" and "hard" cases** deliberately, not just obvious examples — a test set made only of obvious cases would make both detectors look artificially good and defeat the point of the comparison in ../requirements/SPECIFICATION.md §6.
 - **Clean entries include near-misses on purpose** (e.g. a phone-number-shaped code snippet, a general non-personal reference to "a doctor's appointment") — these are the entries that actually test false-positive rate (NFR relevant), not just recall.
 
 ---
@@ -75,9 +75,9 @@
 | CLEAN (general) | 0 | 10 |
 | **Total** | **15** | **25** |
 
-**Board note on balance:** the set is deliberately weighted toward no-flag/clean entries (25 of 40) rather than 50/50. A detector evaluated only on obviously-sensitive prompts would look artificially strong; false-positive rate (how often a clean or near-miss prompt gets wrongly flagged) is just as important to this research question as recall, per SPECIFICATION.md §6, and needed enough representative negative/hard cases to be measurable.
+**Board note on balance:** the set is deliberately weighted toward no-flag/clean entries (25 of 40) rather than 50/50. A detector evaluated only on obviously-sensitive prompts would look artificially strong; false-positive rate (how often a clean or near-miss prompt gets wrongly flagged) is just as important to this research question as recall, per ../requirements/SPECIFICATION.md §6, and needed enough representative negative/hard cases to be measurable.
 
 ## Links
-- [MODEL_ARCHITECTURE.md](./MODEL_ARCHITECTURE.md)
-- [SPECIFICATION.md](./SPECIFICATION.md)
-- [DOMAIN_MODEL.md](./DOMAIN_MODEL.md)
+- [MODEL_../architecture/ARCHITECTURE.md](./MODEL_../architecture/ARCHITECTURE.md)
+- [../requirements/SPECIFICATION.md](../requirements/../requirements/SPECIFICATION.md)
+- [../architecture/DOMAIN_MODEL.md](../architecture/../architecture/DOMAIN_MODEL.md)

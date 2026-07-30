@@ -1,9 +1,9 @@
 # ACTIVITY_DIAGRAMS.md — SentryPrompt4
 
 **Project:** SentryPrompt4
-**Traceability:** Each activity diagram operationalizes one or more use cases from USE_CASES.md and functional requirements from REQUIREMENTS.md. Diagrams are grouped into the original screening-flow core (1–3) and the platform-layer scope expansion (4–7), matching the split already established in DOMAIN_MODEL.md and PROJECT_BACKLOG.md Increment 4's brief: *"now including account lifecycle ... and message-persistence workflow."*
+**Traceability:** Each activity diagram operationalizes one or more use cases from ../requirements/USE_CASES.md and functional requirements from ../requirements/REQUIREMENTS.md. Diagrams are grouped into the original screening-flow core (1–3) and the platform-layer scope expansion (4–7), matching the split already established in ../architecture/DOMAIN_MODEL.md and ../requirements/PROJECT_BACKLOG.md Increment 4's brief: *"now including account lifecycle ... and message-persistence workflow."*
 
-**Notation note:** rendered as Mermaid `flowchart` diagrams rather than classic UML swimlane/activity notation, for the same documented reason given in USE_CASES.md — Mermaid has no native UML activity-diagram type, and the assignment brief explicitly permits Mermaid as a workaround. Fork/join points (parallel detection) are called out explicitly in node labels since Mermaid flowcharts have no native fork/join bar.
+**Notation note:** rendered as Mermaid `flowchart` diagrams rather than classic UML swimlane/activity notation, for the same documented reason given in ../requirements/USE_CASES.md — Mermaid has no native UML activity-diagram type, and the assignment brief explicitly permits Mermaid as a workaround. Fork/join points (parallel detection) are called out explicitly in node labels since Mermaid flowcharts have no native fork/join bar.
 
 ---
 
@@ -54,7 +54,7 @@ flowchart TD
     F --> J([End])
 ```
 
-**Notes:** the "fails open" branch is documented here rather than omitted, matching USE_CASES.md's own honesty about this as a named, unresolved risk — not hidden behind a clean happy-path diagram.
+**Notes:** the "fails open" branch is documented here rather than omitted, matching ../requirements/USE_CASES.md's own honesty about this as a named, unresolved risk — not hidden behind a clean happy-path diagram.
 
 ---
 
@@ -150,7 +150,7 @@ flowchart TD
 ## 7. Message Persistence Workflow
 
 **Traces to:** FR-019, FR-020, NFR-009, NFR-011
-**Connects:** the research-domain screening path to the platform-domain conversation history, per DOMAIN_MODEL.md §5's "How the Product Layer Connects to the Research Layer."
+**Connects:** the research-domain screening path to the platform-domain conversation history, per ../architecture/DOMAIN_MODEL.md §5's "How the Product Layer Connects to the Research Layer."
 
 ```mermaid
 flowchart TD
@@ -167,7 +167,7 @@ flowchart TD
     D --> K
 ```
 
-**Notes:** this is the diagram that makes DOMAIN_MODEL.md §5's key design decision executable — every path into `Conversation`/`Message` passes through the same screening pipeline as §1; there is no second, unscreened entry point into persisted history. The `EvaluationLogEntry` write happens regardless of whether the prompt was persisted as a `Message`, keeping the content-free research log (NFR-009) structurally separate from the content-bearing product store (NFR-011).
+**Notes:** this is the diagram that makes ../architecture/DOMAIN_MODEL.md §5's key design decision executable — every path into `Conversation`/`Message` passes through the same screening pipeline as §1; there is no second, unscreened entry point into persisted history. The `EvaluationLogEntry` write happens regardless of whether the prompt was persisted as a `Message`, keeping the content-free research log (NFR-009) structurally separate from the content-bearing product store (NFR-011).
 
 ---
 
@@ -189,7 +189,7 @@ flowchart TD
     I --> J([Panel refreshes,\naction reflected])
 ```
 
-**Notes:** the diagram deliberately has no path from this flow into `Message` or `Conversation` content — enforcing NFR-013 (account-level visibility only) at the process-flow level, matching the same boundary already enforced structurally in DOMAIN_MODEL.md's `AdminAuditLog` relationships.
+**Notes:** the diagram deliberately has no path from this flow into `Message` or `Conversation` content — enforcing NFR-013 (account-level visibility only) at the process-flow level, matching the same boundary already enforced structurally in ../architecture/DOMAIN_MODEL.md's `AdminAuditLog` relationships.
 
 ---
 
@@ -197,16 +197,16 @@ flowchart TD
 
 | Concern raised | Resolution |
 | --- | --- |
-| Why split into 8 diagrams instead of fewer, larger ones? | Each diagram maps to one coherent use-case cluster from USE_CASES.md; merging (e.g. registration + login + reset into one) would produce a diagram wide enough to lose readability, without adding traceability value. |
-| Does the extension diagram (§2) hide the fail-open risk? | No — shown explicitly as a named branch, consistent with USE_CASES.md UC2's own "known limitation, not resolved by design" framing. |
+| Why split into 8 diagrams instead of fewer, larger ones? | Each diagram maps to one coherent use-case cluster from ../requirements/USE_CASES.md; merging (e.g. registration + login + reset into one) would produce a diagram wide enough to lose readability, without adding traceability value. |
+| Does the extension diagram (§2) hide the fail-open risk? | No — shown explicitly as a named branch, consistent with ../requirements/USE_CASES.md UC2's own "known limitation, not resolved by design" framing. |
 | Does §7 duplicate §1/§3's screening logic? | No — §7 starts *after* a terminal screening outcome and focuses on what happens to the result (persistence, encryption, logging), not the detection process itself, which is fully specified in §1. |
-| Gap acknowledged, not solved here | Profile edit/delete (FR-018) and account/conversation deletion (FR-020, NFR-014) as standalone activity flows are deferred to the same follow-up already tracked in PROJECT_BACKLOG.md (Increment 4B note) — not included here to avoid duplicating an incomplete AUTH_DESIGN.md section. |
+| Gap acknowledged, not solved here | Profile edit/delete (FR-018) and account/conversation deletion (FR-020, NFR-014) as standalone activity flows are deferred to the same follow-up already tracked in ../requirements/PROJECT_BACKLOG.md (Increment 4B note) — not included here to avoid duplicating an incomplete ../architecture/AUTH_DESIGN.md section. |
 
 ## Links
 
 - [STATE_DIAGRAMS.md](https://github.com/Skiet88/SentryPrompt/blob/main/STATE_DIAGRAMS.md)
-- [USE_CASES.md](https://github.com/Skiet88/SentryPrompt/blob/main/USE_CASES.md)
-- [REQUIREMENTS.md](https://github.com/Skiet88/SentryPrompt/blob/main/REQUIREMENTS.md)
-- [DOMAIN_MODEL.md](https://github.com/Skiet88/SentryPrompt/blob/main/DOMAIN_MODEL.md)
-- [AUTH_DESIGN.md](https://github.com/Skiet88/SentryPrompt/blob/main/AUTH_DESIGN.md)
-- [PROJECT_BACKLOG.md](https://github.com/Skiet88/SentryPrompt/blob/main/PROJECT_BACKLOG.md)
+- [../requirements/USE_CASES.md](https://github.com/Skiet88/SentryPrompt/blob/main/../requirements/USE_CASES.md)
+- [../requirements/REQUIREMENTS.md](https://github.com/Skiet88/SentryPrompt/blob/main/../requirements/REQUIREMENTS.md)
+- [../architecture/DOMAIN_MODEL.md](https://github.com/Skiet88/SentryPrompt/blob/main/../architecture/DOMAIN_MODEL.md)
+- [../architecture/AUTH_DESIGN.md](https://github.com/Skiet88/SentryPrompt/blob/main/../architecture/AUTH_DESIGN.md)
+- [../requirements/PROJECT_BACKLOG.md](https://github.com/Skiet88/SentryPrompt/blob/main/../requirements/PROJECT_BACKLOG.md)

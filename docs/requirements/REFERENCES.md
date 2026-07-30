@@ -67,6 +67,6 @@ Stated explicitly so this reference list reads as grounding the design, not as a
 **Note on remaining sources:** Brown et al. (2020), Jurafsky and Martin (2023), Russell and Norvig (2021), Dey (2001), and the EU GDPR regulation (2016) are foundational NLP/AI/context-computing/data-protection references from the original proposal's literature review — they ground the discipline this project sits within, even where they are not cited against a specific design decision above.
 
 ## Links
-- [SPECIFICATION.md](./SPECIFICATION.md)
-- [MODEL_ARCHITECTURE.md](./MODEL_ARCHITECTURE.md)
-- [PROJECT_BACKLOG.md](./PROJECT_BACKLOG.md)
+- [SPECIFICATION.md](SPECIFICATION.md)
+- [MODEL_../architecture/ARCHITECTURE.md](./MODEL_../architecture/ARCHITECTURE.md)
+- [PROJECT_BACKLOG.md](PROJECT_BACKLOG.md)

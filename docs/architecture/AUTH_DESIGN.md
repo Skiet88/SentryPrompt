@@ -1,7 +1,7 @@
 # AUTH_DESIGN.md — SentryPrompt4
 
 **Increment:** 4B — Auth & Account Module Design
-**Traces to:** FR-013–FR-018, FR-021, FR-022, NFR-011, NFR-012, NFR-013, NFR-014 (REQUIREMENTS.md); `User`, `Session`, `EmailVerificationToken`, `PasswordResetToken` (DOMAIN_MODEL.md §5)
+**Traces to:** FR-013–FR-018, FR-021, FR-022, NFR-011, NFR-012, NFR-013, NFR-014 (../requirements/REQUIREMENTS.md); `User`, `Session`, `EmailVerificationToken`, `PasswordResetToken` (DOMAIN_MODEL.md §5)
 
 This document specifies the concrete flows behind the Auth Service container already present in ARCHITECTURE.md and the entities already defined in DOMAIN_MODEL.md. It does not introduce new scope — every decision below resolves an ambiguity that was already implied but not yet pinned down (e.g. DOMAIN_MODEL.md defines `EmailVerificationToken.expiresAt` as an attribute, but no document yet states what that expiry window actually is).
 
@@ -159,7 +159,7 @@ This gate sits in front of the Screening Service entry point already documented 
 
 ## 6. Admin-Panel Access Boundary (FR-021, NFR-013)
 
-This is the module's most important non-negotiable rule, already stated in REQUIREMENTS.md and DOMAIN_MODEL.md — restated here as an enforceable design rule, not just a policy statement:
+This is the module's most important non-negotiable rule, already stated in ../requirements/REQUIREMENTS.md and DOMAIN_MODEL.md — restated here as an enforceable design rule, not just a policy statement:
 
 - Every admin-panel endpoint checks `User.role == 'admin'` server-side (never a client-side-only check).
 - Admin endpoints operate exclusively on `User` fields (`status`, `emailVerified`) and `AdminAuditLog` — **no admin endpoint queries or returns `Conversation` or `Message` records, structurally.** This mirrors the DOMAIN_MODEL.md decision that `AdminAuditLog` never references `Message` content.
@@ -193,7 +193,7 @@ This is the module's most important non-negotiable rule, already stated in REQUI
 **Known gap, not hidden:** FR-018 (profile view/edit/delete) and FR-020 (conversation/account deletion) are not diagrammed in this document — they're simpler CRUD-style flows without the token/session complexity of the flows above, and are deferred to keep this increment focused on the genuinely non-trivial auth mechanics. Tracked as a follow-up rather than silently dropped.
 
 ## Links
-- [REQUIREMENTS.md](./REQUIREMENTS.md)
-- [DOMAIN_MODEL.md](./DOMAIN_MODEL.md)
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
-- [PROJECT_BACKLOG.md](./PROJECT_BACKLOG.md)
+- [../requirements/REQUIREMENTS.md](../requirements/../requirements/REQUIREMENTS.md)
+- [DOMAIN_MODEL.md](DOMAIN_MODEL.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [../requirements/PROJECT_BACKLOG.md](../requirements/../requirements/PROJECT_BACKLOG.md)

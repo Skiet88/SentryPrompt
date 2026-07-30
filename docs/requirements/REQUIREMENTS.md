@@ -1,7 +1,7 @@
 # REQUIREMENTS.md
 
 **Project:** SentryPrompt4
-**Traceability:** Each requirement maps to a stakeholder concern (STAKEHOLDER_ANALYSIS.md) and, where relevant, an existing architectural component (ARCHITECTURE.md).
+**Traceability:** Each requirement maps to a stakeholder concern (STAKEHOLDER_ANALYSIS.md) and, where relevant, an existing architectural component (../architecture/ARCHITECTURE.md).
 
 ---
 
@@ -44,7 +44,7 @@
 | **Deployability** | NFR-004 | The web application and screening service shall be deployable via a documented single-command or scripted setup (e.g. `docker compose up` or an equivalent documented sequence). |
 | **Maintainability** | NFR-005 | The rule-based detector's patterns shall be defined in a separate, editable configuration/data file, not hard-coded inline, so categories can be added without touching detection logic. |
 | **Maintainability** | NFR-006 | The system shall include unit tests for the rule-based detector and the aggregation logic, covering at minimum the five taxonomy categories in SPECIFICATION.md §3. |
-| **Scalability** | NFR-007 | The screening service shall be architected as a distinct component (per ARCHITECTURE.md Container diagram) so it could be scaled or replaced independently of the client surfaces, even though this prototype targets single-user local load. |
+| **Scalability** | NFR-007 | The screening service shall be architected as a distinct component (per ../architecture/ARCHITECTURE.md Container diagram) so it could be scaled or replaced independently of the client surfaces, even though this prototype targets single-user local load. |
 | **Security** | NFR-008 | SentryPrompt4's own screening and inference logic (rule-based detection, context-aware detection, and responses to approved prompts within the web app) shall run entirely via the local Ollama instance, with no prompt content sent to an external service *for the purpose of screening*. This does not apply to the student's own downstream choice to submit an approved prompt to a third-party AI platform via the extension — that transmission is the extension's intended function (FR-010), not a violation of this requirement. |
 | **Security** | NFR-009 | Logged evaluation records shall not store the raw text of a prompt classified as sensitive; only the classification result, category, and anonymized metadata shall be retained. |
 | **Performance** | NFR-010 | Combined rule-based and context-aware screening shall complete within 2 seconds for a typical prompt (under ~200 words) on standard development hardware, to avoid materially disrupting the student's workflow. |
@@ -55,10 +55,10 @@
 
 ---
 
-## 2A. Architecture Consistency Check (post-hoc, run against ARCHITECTURE.md)
+## 2A. Architecture Consistency Check (post-hoc, run against ../architecture/ARCHITECTURE.md)
 
 - **NFR-008 corrected:** original wording banned all external transmission, which contradicted FR-010 (the extension's core purpose is to screen prompts *headed to* external third-party platforms). Reworded to scope the "local-only" constraint to SentryPrompt4's own screening/inference, not the student's downstream platform choice.
-- **Gap identified, deferred to Increment 5/8:** ARCHITECTURE.md's Component diagram shows only one entry point into the Screening Service (via the live Backend API). FR-012 requires an evaluation path independent of live usage. ARCHITECTURE.md needs a documented offline evaluation harness (a script/component that calls the Screening Service directly against a labeled test set, bypassing the API/client layers). Not fixed yet — tracked for when Increment 8 (Model Architecture & Evaluation Run) is built.
+- **Gap identified, deferred to Increment 5/8:** ../architecture/ARCHITECTURE.md's Component diagram shows only one entry point into the Screening Service (via the live Backend API). FR-012 requires an evaluation path independent of live usage. ../architecture/ARCHITECTURE.md needs a documented offline evaluation harness (a script/component that calls the Screening Service directly against a labeled test set, bypassing the API/client layers). Not fixed yet — tracked for when Increment 8 (Model Architecture & Evaluation Run) is built.
 - **Minor fix flagged:** response-path arrows (`api` → `webapp`/`extension`) are implied but not drawn in the Container diagram. Cosmetic; fix alongside the evaluation harness addition rather than as a separate pass.
 
 ## 3. Board Review Notes (challenges considered before finalizing)
@@ -69,6 +69,6 @@
 - **Gap acknowledged, not solved here:** there is no NFR covering model drift or Ollama version changes (noted as a Stakeholder risk for the "Ollama Maintainers" row). This is deferred to the Risks section of the Design Phase Template (§9.4), not resolved as a requirement, since mitigating it is out of individual scope.
 
 ## Links
-- [SPECIFICATION.md](./SPECIFICATION.md)
-- [STAKEHOLDER_ANALYSIS.md](./STAKEHOLDER_ANALYSIS.md)
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [SPECIFICATION.md](SPECIFICATION.md)
+- [STAKEHOLDER_ANALYSIS.md](STAKEHOLDER_ANALYSIS.md)
+- [../architecture/ARCHITECTURE.md](../architecture/../architecture/ARCHITECTURE.md)
