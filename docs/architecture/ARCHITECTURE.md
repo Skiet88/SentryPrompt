@@ -4,13 +4,13 @@
 **SentryPrompt4** — Context-Aware NLP Screening for Sensitive Information in Higher Education AI Prompts
 
 ## Domain
-Higher Education Technology / Data Privacy & AI Safety — see [SPECIFICATION.md](./SPECIFICATION.md) for full domain description.
+Higher Education Technology / Data Privacy & AI Safety — see [../requirements/SPECIFICATION.md](../requirements/../requirements/SPECIFICATION.md) for full domain description.
 
 ## Problem Statement
-Students unknowingly expose sensitive personal and institutional data in AI prompts, with no interception mechanism in place before transmission to a third-party model. See [SPECIFICATION.md](./SPECIFICATION.md) for the complete problem statement and POPIA context.
+Students unknowingly expose sensitive personal and institutional data in AI prompts, with no interception mechanism in place before transmission to a third-party model. See [../requirements/SPECIFICATION.md](../requirements/../requirements/SPECIFICATION.md) for the complete problem statement and POPIA context.
 
 ## Individual Scope & Feasibility
-Research prototype expanded to a full account-based platform (registration, login, persistent conversation history, admin panel) alongside the core screening research; one shared backend consumed by two thin client surfaces (web app, browser extension); local Ollama backend removes external infrastructure dependency. See [SPECIFICATION.md](./SPECIFICATION.md) §1.3 for full justification and the accepted feasibility trade-off.
+Research prototype expanded to a full account-based platform (registration, login, persistent conversation history, admin panel) alongside the core screening research; one shared backend consumed by two thin client surfaces (web app, browser extension); local Ollama backend removes external infrastructure dependency. See [../requirements/SPECIFICATION.md](../requirements/../requirements/SPECIFICATION.md) §1.3 for full justification and the accepted feasibility trade-off.
 
 ---
 
@@ -122,9 +122,9 @@ C4Component
     Rel(explainer, api, "Returns classification + explanation to")
 ```
 
-**Research note:** The Rule-Based Detector and Context-Aware Detector run independently and both feed the Decision Aggregator. This is intentional — running both on every prompt (rather than only falling back to context-aware when rules miss) is what enables the precision/recall comparison described in SPECIFICATION.md §6.
+**Research note:** The Rule-Based Detector and Context-Aware Detector run independently and both feed the Decision Aggregator. This is intentional — running both on every prompt (rather than only falling back to context-aware when rules miss) is what enables the precision/recall comparison described in ../requirements/SPECIFICATION.md §6.
 
-**Gap closed from Increment 2A:** the original diagram had only one entry point into the Screening Service (via the live Backend API), but FR-012 requires evaluation to run independent of live usage. An **Evaluation Harness** (a standalone script, not shown as a separate C4 component since it is a research tool rather than a deployable service) calls the Screening Service's `preprocessor` directly using the same interface the Backend API uses, bypassing `api`, `webapp`, and `extension` entirely. This is the mechanism behind UC8 in USE_CASES.md.
+**Gap closed from Increment 2A:** the original diagram had only one entry point into the Screening Service (via the live Backend API), but FR-012 requires evaluation to run independent of live usage. An **Evaluation Harness** (a standalone script, not shown as a separate C4 component since it is a research tool rather than a deployable service) calls the Screening Service's `preprocessor` directly using the same interface the Backend API uses, bypassing `api`, `webapp`, and `extension` entirely. This is the mechanism behind UC8 in ../requirements/USE_CASES.md.
 
 ---
 
@@ -162,10 +162,10 @@ Earlier drafts of this diagram deliberately left the implementation language/fra
 
 ## Links
 - [README.md](./README.md)
-- [SPECIFICATION.md](./SPECIFICATION.md)
-- [REQUIREMENTS.md](./REQUIREMENTS.md)
-- [DOMAIN_MODEL.md](./DOMAIN_MODEL.md)
-- [AUTH_DESIGN.md](./AUTH_DESIGN.md)
-- [ERD.md](./ERD.md)
+- [../requirements/SPECIFICATION.md](../requirements/../requirements/SPECIFICATION.md)
+- [../requirements/REQUIREMENTS.md](../requirements/../requirements/REQUIREMENTS.md)
+- [DOMAIN_MODEL.md](DOMAIN_MODEL.md)
+- [AUTH_DESIGN.md](AUTH_DESIGN.md)
+- [ERD.md](ERD.md)
 
 ---

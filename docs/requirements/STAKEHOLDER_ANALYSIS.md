@@ -27,5 +27,5 @@ A genuine stakeholder analysis is normally built from interviews. This project's
 This is stated openly here so it can be cited directly in Design Phase Template §9.1 (Operational Feasibility) rather than surfacing later as an unaddressed gap.
 
 ## Links
-- [SPECIFICATION.md](./SPECIFICATION.md)
-- [REQUIREMENTS.md](./REQUIREMENTS.md)
+- [SPECIFICATION.md](SPECIFICATION.md)
+- [REQUIREMENTS.md](REQUIREMENTS.md)

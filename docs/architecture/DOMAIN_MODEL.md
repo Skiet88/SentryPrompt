@@ -1,6 +1,6 @@
 # DOMAIN_MODEL.md — SentryPrompt4
 
-**Traceability:** Entities below are derived directly from REQUIREMENTS.md (FR-001–FR-012) and the architecture consistency findings in Increment 2A. Two design constraints from board review are non-negotiable in this model and are called out wherever they apply:
+**Traceability:** Entities below are derived directly from ../requirements/REQUIREMENTS.md (FR-001–FR-012) and the architecture consistency findings in Increment 2A. Two design constraints from board review are non-negotiable in this model and are called out wherever they apply:
 1. **No entity persists raw prompt text.** (NFR-009)
 2. **The evaluation path (FR-012) is structurally independent from the live screening path.** (Increment 2A finding)
 
@@ -238,6 +238,6 @@ classDiagram
 **Total entity count: 14** (7 research-domain + 7 platform-domain), up from the originally scoped 7.
 
 ## Links (updated)
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
-- [REQUIREMENTS.md](./REQUIREMENTS.md)
-- [USE_CASES.md](./USE_CASES.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [../requirements/REQUIREMENTS.md](../requirements/../requirements/REQUIREMENTS.md)
+- [../requirements/USE_CASES.md](../requirements/../requirements/USE_CASES.md)

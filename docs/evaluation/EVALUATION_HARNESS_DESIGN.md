@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-This is the design for the script that answers SentryPrompt4's actual research question: does parallel rule-based + context-aware detection outperform either method alone? It runs `TEST_SET.csv` through both detectors **independently**, compares each to ground truth, and computes the metrics SPECIFICATION.md §6 commits to.
+This is the design for the script that answers SentryPrompt4's actual research question: does parallel rule-based + context-aware detection outperform either method alone? It runs `TEST_SET.csv` through both detectors **independently**, compares each to ground truth, and computes the metrics ../requirements/SPECIFICATION.md §6 commits to.
 
 ## 2. Design
 
@@ -28,7 +28,7 @@ This is the design for the script that answers SentryPrompt4's actual research q
    - False Positive Rate = FP / (FP + TN)
 4. Output: a results table (3 rows — rule-only, context-only, aggregated — × 3 metrics each)
 5. Output: a qualitative log of every entry where ruleVerdict != contextVerdict — this is the actual
-   research discussion material for SPECIFICATION.md §6 ("cases where rule-based fails but
+   research discussion material for ../requirements/SPECIFICATION.md §6 ("cases where rule-based fails but
    context-aware succeeds, and vice versa")
 ```
 
@@ -42,7 +42,7 @@ This is the design for the script that answers SentryPrompt4's actual research q
 | Context-Aware only | *(computed at run time)* | *(computed at run time)* | *(computed at run time)* |
 | Aggregated (parallel) | *(computed at run time)* | *(computed at run time)* | *(computed at run time)* |
 
-**Board note — this table is deliberately left uncomputed here.** Filling in numbers now, before either detector is actually built and run, would mean fabricating research results — the same fabrication risk flagged in TEST_CASES.md. This table gets populated once the detectors exist and TEST_SET.csv is actually run through them, and that run is what belongs in the Design Phase Template's evaluation section, not a placeholder invented at design time.
+**Board note — this table is deliberately left uncomputed here.** Filling in numbers now, before either detector is actually built and run, would mean fabricating research results — the same fabrication risk flagged in ../requirements/TEST_CASES.md. This table gets populated once the detectors exist and TEST_SET.csv is actually run through them, and that run is what belongs in the Design Phase Template's evaluation section, not a placeholder invented at design time.
 
 ## 4. Predicted Failure Modes (hypotheses to test, not claims)
 
@@ -53,7 +53,7 @@ Stated here as things to specifically watch for when the real run happens, since
 - **TS-021 tests whether context-aware detection can catch a category rule-based detection structurally cannot** (unpublished exam content has no fixed pattern) — this entry is the clearest single test of the entire research question.
 
 ## Links
-- [TEST_SET.md](./TEST_SET.md)
-- [MODEL_ARCHITECTURE.md](./MODEL_ARCHITECTURE.md)
-- [DOMAIN_MODEL.md](./DOMAIN_MODEL.md)
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [TEST_SET.md](TEST_SET.md)
+- [MODEL_../architecture/ARCHITECTURE.md](./MODEL_../architecture/ARCHITECTURE.md)
+- [../architecture/DOMAIN_MODEL.md](../architecture/../architecture/DOMAIN_MODEL.md)
+- [../architecture/ARCHITECTURE.md](../architecture/../architecture/ARCHITECTURE.md)

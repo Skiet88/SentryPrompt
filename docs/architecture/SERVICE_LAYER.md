@@ -1,6 +1,6 @@
 # SERVICE_LAYER.md — SentryPrompt4
 
-**Traces to:** REPOSITORY_DESIGN.md, REQUIREMENTS.md (all FRs), ARCHITECTURE.md (FastAPI)
+**Traces to:** REPOSITORY_DESIGN.md, ../requirements/REQUIREMENTS.md (all FRs), ARCHITECTURE.md (FastAPI)
 **Feeds:** Design Phase Template §3.2.3 (Interface Specifications), §8.4.2 (API Specification cross-reference), prototype evidence (§5)
 
 ---
@@ -132,7 +132,7 @@ class ScreeningService:
 FastAPI generates the OpenAPI schema automatically from the route definitions and Pydantic models above — this is one of the reasons FastAPI was chosen in ARCHITECTURE.md's Tech Stack Decision. At build time, `/docs` will serve the interactive Swagger UI directly from this same endpoint table; no separate YAML file needs to be hand-maintained, which keeps the documentation from drifting out of sync with the actual code — an explicit answer to the Maintainability NFR category (NFR-005, NFR-006).
 
 ## Links
-- [REPOSITORY_DESIGN.md](./REPOSITORY_DESIGN.md)
-- [REQUIREMENTS.md](./REQUIREMENTS.md)
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
-- [DOMAIN_MODEL.md](./DOMAIN_MODEL.md)
+- [REPOSITORY_DESIGN.md](REPOSITORY_DESIGN.md)
+- [../requirements/REQUIREMENTS.md](../requirements/../requirements/REQUIREMENTS.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [DOMAIN_MODEL.md](DOMAIN_MODEL.md)

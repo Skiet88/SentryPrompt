@@ -67,5 +67,5 @@ A test suite claiming to be complete has to prove it, not just assert it. This t
 - **Gap acknowledged, not silently missing:** no load/concurrency test exists, since NFR-007 (scalability) explicitly targets single-user local load for this prototype. Adding one here would test something outside the stated scope.
 
 ## Links
-- [USE_CASES.md](./USE_CASES.md)
-- [REQUIREMENTS.md](./REQUIREMENTS.md)
+- [USE_CASES.md](USE_CASES.md)
+- [REQUIREMENTS.md](REQUIREMENTS.md)

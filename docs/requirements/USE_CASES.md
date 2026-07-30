@@ -164,7 +164,7 @@ Per the assignment guidance ("select 8 critical use cases"), the following two a
 | **UC10 — Configure Rule Patterns** | Administrator edits the rule-based detector's pattern configuration file to add/adjust a detection category. | Administrative/maintenance use case (supports NFR-005), not part of the core research-facing flow the other 8 use cases describe. |
 
 ## Links
-- [SPECIFICATION.md](./SPECIFICATION.md)
-- [REQUIREMENTS.md](./REQUIREMENTS.md)
-- [STAKEHOLDER_ANALYSIS.md](./STAKEHOLDER_ANALYSIS.md)
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [SPECIFICATION.md](SPECIFICATION.md)
+- [REQUIREMENTS.md](REQUIREMENTS.md)
+- [STAKEHOLDER_ANALYSIS.md](STAKEHOLDER_ANALYSIS.md)
+- [../architecture/ARCHITECTURE.md](../architecture/../architecture/ARCHITECTURE.md)

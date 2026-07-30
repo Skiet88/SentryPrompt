@@ -1,7 +1,7 @@
 # ERD.md — SentryPrompt4
 
 **Increment:** 5 — Data Model: ERD & AI Data Pipeline
-**Traces to:** DOMAIN_MODEL.md (all 14 entities), REQUIREMENTS.md NFR-009, NFR-011, NFR-012, NFR-014
+**Traces to:** DOMAIN_MODEL.md (all 14 entities), ../requirements/REQUIREMENTS.md NFR-009, NFR-011, NFR-012, NFR-014
 **Note on scope:** this document adds concrete database-level detail (types, keys, constraints) to entities already defined conceptually in DOMAIN_MODEL.md. No new entity or relationship is introduced here that DOMAIN_MODEL.md didn't already specify.
 
 ---
@@ -162,15 +162,15 @@ erDiagram
 | NFR-011 (encryption at rest) | §2 (`MESSAGE` schema note) |
 | NFR-012 (password hashing) | Enforced at write-time by Auth Service (AUTH_DESIGN.md §1–§2); ERD stores only the resulting hash, never plaintext |
 | NFR-014 (right to erasure) | Deletion mechanics (which rows get removed on account deletion) are **not yet specified here** — tracked as a follow-up alongside the deferred FR-020 flow noted in AUTH_DESIGN.md |
-| FR-011, FR-012 (evaluation logging & independent test harness) | See [DATA_PIPELINE.md](./DATA_PIPELINE.md) — the data flow itself is documented there, this ERD only covers the schema it reads/writes |
+| FR-011, FR-012 (evaluation logging & independent test harness) | See [DATA_PIPELINE.md](DATA_PIPELINE.md) — the data flow itself is documented there, this ERD only covers the schema it reads/writes |
 
 **Known gap, not hidden:** the exact cascade behavior on account/conversation deletion (which rows in `CONVERSATION`, `MESSAGE`, `SESSION`, etc. get removed and in what order) is not specified in this document. This belongs with the FR-018/FR-020/NFR-014 follow-up already flagged as deferred in AUTH_DESIGN.md, rather than being guessed at here.
 
 ## Links
-- [DOMAIN_MODEL.md](./DOMAIN_MODEL.md)
-- [AUTH_DESIGN.md](./AUTH_DESIGN.md)
-- [DATA_PIPELINE.md](./DATA_PIPELINE.md)
-- [REQUIREMENTS.md](./REQUIREMENTS.md)
-- [PROJECT_BACKLOG.md](./PROJECT_BACKLOG.md)
+- [DOMAIN_MODEL.md](DOMAIN_MODEL.md)
+- [AUTH_DESIGN.md](AUTH_DESIGN.md)
+- [DATA_PIPELINE.md](DATA_PIPELINE.md)
+- [../requirements/REQUIREMENTS.md](../requirements/../requirements/REQUIREMENTS.md)
+- [../requirements/PROJECT_BACKLOG.md](../requirements/../requirements/PROJECT_BACKLOG.md)
 
 
