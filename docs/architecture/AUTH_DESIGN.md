@@ -174,7 +174,32 @@ This is the module's most important non-negotiable rule, already stated in ../re
 
 ---
 
-## 7. Summary Table — Requirement Coverage
+## 8. Profile Management & Account Deletion Cascade (FR-018, FR-020, NFR-014)
+
+**Closing the gap flagged below (§7's original note) rather than leaving it open into the final submission.** These are genuinely simpler flows than §2–§4 — no token issuance, no expiry windows — which is why they were deferred initially, but "simpler" still needs a concrete cascade order specified, since an unspecified delete order on a multi-table account is exactly the kind of design gap that undermines a right-to-erasure claim.
+
+### 8.1 Profile View/Edit (FR-018)
+
+`GET/PUT /api/profile` reads/writes `User.displayName` and `User.email` directly. Per REQUIREMENTS.md's acceptance criterion, an email change re-triggers FR-014: `User.emailVerified` is reset to `false` and a new `EmailVerificationToken` is issued exactly as in §2 — this is not a new mechanism, it's the existing registration-verification flow re-entered.
+
+### 8.2 Account Deletion Cascade (FR-020, NFR-014)
+
+`DELETE /api/profile` triggers deletion, orchestrated by `AuthService`/`ConversationService` at the **service layer**, not left to cascading foreign-key constraints at the database layer — per REPOSITORY_DESIGN.md §3.1's comment that a repository only deletes its own table; the service is what sequences the cascade. Concrete order, specified here for the first time:
+
+1. Invalidate and delete all `Session` rows for the user (no lingering authenticated requests mid-deletion).
+2. Delete all `Message` rows across all of the user's `Conversation`s.
+3. Delete all `Conversation` rows for the user.
+4. Delete any unused `EmailVerificationToken`/`PasswordResetToken` rows for the user.
+5. Delete the `User` row itself, last — every row that references `userId` as a foreign key is gone before the row they reference is removed, avoiding an orphaned-FK state even transiently.
+6. `AdminAuditLog` rows where this user was previously a `targetUserId` are **not deleted** — the audit trail's immutability (FR-022) takes precedence over erasure for administrative action history; only the user's own content and account row are erased, not the record that an admin once suspended/reinstated them. This is a deliberate precedence decision between two requirements that could otherwise conflict, stated explicitly rather than left for an implementer to guess.
+
+**Single-action requirement (FR-020's acceptance criterion):** steps 1–5 execute as one service-layer transaction/call from the student's perspective — a single `DELETE /api/profile` request, not a multi-step wizard — satisfying "a single action" without requiring five separate API calls from the client.
+
+**Unverified-account deletion (closing STATE_DIAGRAMS.md §2's noted gap):** this same cascade applies regardless of `User.emailVerified` state — POPIA's erasure right is not conditioned on verification status, so an unverified account can self-delete via the same endpoint and cascade above.
+
+---
+
+## 9. Summary Table — Requirement Coverage
 
 | Requirement | Covered by |
 |---|---|
@@ -183,14 +208,16 @@ This is the module's most important non-negotiable rule, already stated in ../re
 | FR-015 (login) | §3 |
 | FR-016 (logout) | §3 |
 | FR-017 (password reset) | §4 |
+| FR-018 (profile view/edit) | §8.1 |
+| FR-020 (conversation/account deletion) | §8.2 |
 | FR-021 (admin panel boundary) | §6 |
-| FR-022 (audit log) | §6 |
+| FR-022 (audit log) | §6, §8.2 (precedence over erasure) |
 | NFR-011 (encryption at rest) | Out of scope for this document — applies to `Message`, covered under Increment 5 (ERD/Data Pipeline) |
 | NFR-012 (password hashing) | §1, §2, §4 |
 | NFR-013 (admin no content access) | §6 |
-| NFR-014 (right to erasure) | Not yet covered — account/conversation deletion flow (FR-020) is a separate flow, tracked for a follow-up addition to this document or Increment 5 |
+| NFR-014 (right to erasure) | §8.2 |
 
-**Known gap, not hidden:** FR-018 (profile view/edit/delete) and FR-020 (conversation/account deletion) are not diagrammed in this document — they're simpler CRUD-style flows without the token/session complexity of the flows above, and are deferred to keep this increment focused on the genuinely non-trivial auth mechanics. Tracked as a follow-up rather than silently dropped.
+**Gap closed:** FR-018 and FR-020 are now specified in §8, including the concrete account-deletion cascade order and its precedence decision against FR-022's audit-log immutability. This was previously deferred as a follow-up; it is resolved here rather than carried forward unresolved into the final submission.
 
 ## Links
 - [../requirements/REQUIREMENTS.md](../requirements/../requirements/REQUIREMENTS.md)

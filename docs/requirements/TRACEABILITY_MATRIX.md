@@ -26,9 +26,9 @@
 | **FR-015** — login without account enumeration | `POST /api/auth/login`; `UserRepository.find_by_email()`; identical error response for bad email or bad password | Prevents an attacker from learning which emails are registered |
 | **FR-016** — logout invalidates session server-side | `POST /api/auth/logout`; `SessionRepository` | Session removed from storage, not just cleared client-side |
 | **FR-017** — password reset via time-limited token | `PasswordResetToken` entity; `POST /api/auth/reset-password/*` | Single-use, expiring token, per ../architecture/SERVICE_LAYER.md §2 |
-| **FR-018** — profile view/edit/delete | `GET/PUT/DELETE /api/profile`; `User` entity | Email change re-triggers FR-014 verification |
+| **FR-018** — profile view/edit/delete | `GET/PUT/DELETE /api/profile`; `User` entity; cascade/re-verification behavior specified in ../architecture/AUTH_DESIGN.md §8.1 | Email change re-triggers FR-014 verification |
 | **FR-019** — persistent conversation history | `Conversation`/`Message` entities; `GET /api/conversations`; `ConversationRepository` | Reverse-chronological listing, per FR wording |
-| **FR-020** — conversation/account deletion (right to erasure) | `DELETE /api/profile`, `DELETE /api/conversations/{id}`; cascade orchestrated in the service layer, not the repository (../architecture/REPOSITORY_DESIGN.md §3.1 comment) | Deletes underlying records, not a visibility flag |
+| **FR-020** — conversation/account deletion (right to erasure) | `DELETE /api/profile`, `DELETE /api/conversations/{id}`; concrete 6-step cascade order specified in ../architecture/AUTH_DESIGN.md §8.2, orchestrated in the service layer, not the repository (../architecture/REPOSITORY_DESIGN.md §3.1 comment) | Deletes underlying records, not a visibility flag; applies regardless of `emailVerified` state |
 | **FR-021** — admin account management panel | Admin Panel container (../architecture/ARCHITECTURE.md); `AdminService`; `GET /api/admin/users` + suspend/reinstate endpoints | `AdminService` has no dependency on `MessageRepository` — the content-access boundary is structural |
 | **FR-022** — immutable admin audit log | `AdminAuditLog` entity, with no `update()`/`delete()` exposed (../architecture/REPOSITORY_DESIGN.md); `GET /api/admin/audit-log` | Immutability enforced at the repository interface, not policy alone |
 
@@ -41,7 +41,7 @@
 | **NFR-001** — plain-language explanations | Explanation Generator component; UC3 spec | Qualitative — no dedicated automated test case, verified by design/content review instead (see TEST_CASES.md §3 coverage notes) |
 | **NFR-002** — ≤1 extra click when clean | UI_MOCKUPS.md flag dialog flow | Verified by prototype walkthrough, not an automated test |
 | **NFR-003** — fully local deployment | ../architecture/ARCHITECTURE.md — local Ollama, SQLite, no cloud dependency | Verified by TC-NF-002 (partially — see NFR-008) |
-| **NFR-004** — single-command/documented setup | *Not yet built* — flagged honestly as pending, not fabricated | Tracked as an open item for the implementation phase, not the design phase |
+| **NFR-004** — single-command/documented setup | `setup.sh` design specified in ../architecture/ARCHITECTURE.md's "Setup Script Design" subsection | A single shell script chosen over Docker/Make deliberately — not yet end-to-end tested, stated honestly rather than assumed |
 | **NFR-005** — configurable rule patterns | `RulePattern` entity, separate from detection logic code | Same artefact as FR-002 |
 | **NFR-006** — unit test coverage of the five taxonomy categories | TEST_CASES.md's Requirement Coverage Matrix (§3) | Confirms all categories have at least one dedicated test case |
 | **NFR-007** — screening service independently scalable | NLP Screening Service as its own Container (../architecture/ARCHITECTURE.md), separate from the Backend API | Architecturally separable even though NFR-007 explicitly targets single-user load for this prototype |
@@ -51,7 +51,7 @@
 | **NFR-011** — message content encrypted at rest | `MessageRepository.save()` encrypts before storage (../architecture/REPOSITORY_DESIGN.md §3.2) | Enforced inside the repository, not the service layer — cannot be bypassed by a careless caller |
 | **NFR-012** — passwords hashed, never plaintext | `AuthService` (bcrypt/Argon2, per ../architecture/AUTH_DESIGN.md) | — |
 | **NFR-013** — admin has no conversation-content access | `AdminService` has no `MessageRepository`/`ConversationRepository` dependency at all (../architecture/SERVICE_LAYER.md §1) | Structural, not a policy comment — the class cannot call what it was never given |
-| **NFR-014** — right-to-erasure account deletion | Same artefact as FR-020 | POPIA compliance framing stated explicitly in SPECIFICATION.md §1.3 |
+| **NFR-014** — right-to-erasure account deletion | Same artefact as FR-020 (../architecture/AUTH_DESIGN.md §8.2) | POPIA compliance framing stated explicitly in SPECIFICATION.md §1.3; precedence over `AdminAuditLog` retention (FR-022) stated explicitly in §8.2, not left ambiguous |
 
 ---
 
@@ -59,7 +59,7 @@
 
 Building this matrix exposed two things worth stating plainly rather than smoothing over:
 
-1. **NFR-004 has no design artefact at all yet** — a single-command setup script was never actually designed, only assumed. This is now a visible, named gap rather than an implicit one.
+1. **NFR-004 now has a design artefact** — a minimal `setup.sh` script is specified in ../architecture/ARCHITECTURE.md's "Setup Script Design" subsection, closing what was previously a named gap with no artefact at all. It is explicitly not yet end-to-end tested — that remains implementation-phase work, stated honestly rather than assumed.
 2. **NFR-010's performance claim is architecturally plausible but empirically unverified** — the design supports it, but no real measurement exists yet. This should be reported as-is in the Design Phase Template's evaluation section (§9), not presented as already confirmed.
 
 Both are carried forward into ../evaluation/EVALUATION_OF_DESIGN.md's risk table rather than fixed here — this document's job is to expose gaps accurately, not to quietly patch over them by inventing an artefact that doesn't exist.

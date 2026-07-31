@@ -13,6 +13,7 @@
 ## Architecture
 - [Architecture](architecture/ARCHITECTURE.md)
 - [Authentication Design](architecture/AUTH_DESIGN.md)
+- [Admin Panel](architecture/ADMIN_PANEL.md)
 - [Domain Model](architecture/DOMAIN_MODEL.md)
 - [ERD](architecture/ERD.md)
 - [Data Pipeline](architecture/DATA_PIPELINE.md)
