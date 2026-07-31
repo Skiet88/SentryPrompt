@@ -1,0 +1,355 @@
+{
+  "summary": {
+    "detector": "rule-based (verbatim port of screening.ts RULE_PATTERNS)",
+    "n_entries": 40,
+    "TP": 6,
+    "FP": 1,
+    "FN": 8,
+    "TN": 25,
+    "precision": 0.8571,
+    "recall_all_categories": 0.4286,
+    "recall_rule_tier_categories_only": 0.8571,
+    "false_positive_rate": 0.0385,
+    "accuracy": 0.775,
+    "note": "MEDICAL/INSTITUTIONAL FLAG entries are structural misses by design (SPECIFICATION.md \u00a73 assigns them to the context-aware tier only, not a rule-based detector defect). recall_rule_tier_categories_only excludes them for a fairer per-tier figure."
+  },
+  "details": [
+    {
+      "entryId": "TS-001",
+      "category": "ID_NUMBER",
+      "groundTruth": "FLAG",
+      "predicted": "FLAG",
+      "outcome": "TP",
+      "matchedCategories": [
+        "student_number"
+      ]
+    },
+    {
+      "entryId": "TS-002",
+      "category": "ID_NUMBER",
+      "groundTruth": "FLAG",
+      "predicted": "FLAG",
+      "outcome": "TP",
+      "matchedCategories": [
+        "bank_card",
+        "sa_id"
+      ]
+    },
+    {
+      "entryId": "TS-003",
+      "category": "ID_NUMBER",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-004",
+      "category": "ID_NUMBER",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-005",
+      "category": "FINANCIAL",
+      "groundTruth": "FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "FN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-006",
+      "category": "FINANCIAL",
+      "groundTruth": "FLAG",
+      "predicted": "FLAG",
+      "outcome": "TP",
+      "matchedCategories": [
+        "bank_card"
+      ]
+    },
+    {
+      "entryId": "TS-007",
+      "category": "FINANCIAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "FLAG",
+      "outcome": "FP",
+      "matchedCategories": [
+        "bank_card"
+      ]
+    },
+    {
+      "entryId": "TS-008",
+      "category": "FINANCIAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-009",
+      "category": "CONTACT_LOCATION",
+      "groundTruth": "FLAG",
+      "predicted": "FLAG",
+      "outcome": "TP",
+      "matchedCategories": [
+        "address",
+        "phone"
+      ]
+    },
+    {
+      "entryId": "TS-010",
+      "category": "CONTACT_LOCATION",
+      "groundTruth": "FLAG",
+      "predicted": "FLAG",
+      "outcome": "TP",
+      "matchedCategories": [
+        "email"
+      ]
+    },
+    {
+      "entryId": "TS-011",
+      "category": "CONTACT_LOCATION",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-012",
+      "category": "CONTACT_LOCATION",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-013",
+      "category": "MEDICAL",
+      "groundTruth": "FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "FN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-014",
+      "category": "MEDICAL",
+      "groundTruth": "FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "FN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-015",
+      "category": "MEDICAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-016",
+      "category": "MEDICAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-017",
+      "category": "MEDICAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-018",
+      "category": "MEDICAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-019",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "FN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-020",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "FN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-021",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "FN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-022",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-023",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-024",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-025",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-026",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-027",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-028",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-029",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-030",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-031",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-032",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-033",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-034",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-035",
+      "category": "ID_NUMBER",
+      "groundTruth": "FLAG",
+      "predicted": "FLAG",
+      "outcome": "TP",
+      "matchedCategories": [
+        "bank_card",
+        "sa_id"
+      ]
+    },
+    {
+      "entryId": "TS-036",
+      "category": "ID_NUMBER",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-037",
+      "category": "MEDICAL",
+      "groundTruth": "FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "FN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-038",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "FN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-039",
+      "category": "FINANCIAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    },
+    {
+      "entryId": "TS-040",
+      "category": "FINANCIAL",
+      "groundTruth": "NO_FLAG",
+      "predicted": "NO_FLAG",
+      "outcome": "TN",
+      "matchedCategories": []
+    }
+  ]
+}

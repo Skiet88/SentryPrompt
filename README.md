@@ -35,7 +35,9 @@ Once complete, this project will provide:
 
 **Known gaps (tracked, not hidden):**
 - [docs/requirements/USE_CASES.md](docs/requirements/USE_CASES.md) and [docs/requirements/TEST_CASES.md](docs/requirements/TEST_CASES.md) currently cover only the original screening-flow requirements (FR-001–FR-012). The platform-layer requirements added under the scope expansion (FR-013–FR-022 — registration, login, password reset, conversation history, admin actions) do not yet have corresponding use cases or test cases.
-- [docs/architecture/AUTH_DESIGN.md](docs/architecture/AUTH_DESIGN.md) covers registration, verification, login, logout, and password reset (FR-013–FR-017), plus the admin-panel access boundary (FR-021). Profile management (FR-018), conversation/account deletion (FR-020), and the right-to-erasure requirement (NFR-014) are simpler CRUD-style flows deferred to a short follow-up.
-- [docs/architecture/ERD.md](docs/architecture/ERD.md) and [docs/architecture/DATA_PIPELINE.md](docs/architecture/DATA_PIPELINE.md) cover the schema and data flow for all 14 entities, but the exact deletion/cascade behavior for account erasure (which rows get removed, in what order) is deferred alongside the same FR-018/FR-020/NFR-014 follow-up above.
+- [docs/architecture/AUTH_DESIGN.md](docs/architecture/AUTH_DESIGN.md) covers registration, verification, login, logout, password reset, profile management, and the full account-deletion cascade (FR-013–FR-018, FR-020–FR-021, NFR-014) — closed as of the §8 addition, previously deferred.
+- [docs/architecture/ERD.md](docs/architecture/ERD.md) and [docs/architecture/DATA_PIPELINE.md](docs/architecture/DATA_PIPELINE.md) cover the schema and data flow for all 14 entities, including the deletion/cascade behavior for account erasure (now specified in AUTH_DESIGN.md §8.2).
+- [docs/architecture/ADMIN_PANEL.md](docs/architecture/ADMIN_PANEL.md) — previously not started, now closed.
+- The context-aware detector's evaluation numbers remain genuinely pending — they require a local Ollama/llama3.2 instance, a Testing Phase dependency not available at Design Phase. The rule-based detector's numbers are real (see [docs/evaluation/EVALUATION_HARNESS_DESIGN.md](docs/evaluation/EVALUATION_HARNESS_DESIGN.md) §3).
 
-Both are tracked in [docs/requirements/PROJECT_BACKLOG.md](docs/requirements/PROJECT_BACKLOG.md).
+Tracked in [docs/requirements/PROJECT_BACKLOG.md](docs/requirements/PROJECT_BACKLOG.md).

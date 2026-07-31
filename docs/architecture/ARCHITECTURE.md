@@ -158,6 +158,31 @@ Earlier drafts of this diagram deliberately left the implementation language/fra
 
 **Honest trade-off, stated plainly:** choosing React over plain HTML+JS means the project now has two toolchains — a Python virtual environment for the backend/screening service, and an npm/Node build step (Vite) for the frontend, even though the backend itself has no Node.js dependency. NFR-004's "single-command or scripted setup" requirement now needs to document both steps (e.g. a top-level script that runs `npm install && npm run build` for the frontend and sets up the Python venv/dependencies for the backend), not assume one covers the other.
 
+### Setup Script Design (NFR-004 — closing the previously-named gap)
+
+PROJECT_BACKLOG.md's board note flagged this as having "no design artefact at all yet." A minimal one is specified here — enough to satisfy "documented single-command or scripted setup" at design phase, without pretending a fully-tested installer exists before implementation:
+
+```bash
+#!/usr/bin/env bash
+# setup.sh — single documented entry point for NFR-004
+set -e
+
+echo "== Backend: Python venv + dependencies =="
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+
+echo "== Frontend: npm dependencies + build =="
+cd frontend && npm install && npm run build && cd ..
+
+echo "== Ollama model check =="
+ollama list | grep -q llama3.2 || ollama pull llama3.2
+
+echo "Setup complete. Run 'scripts/start.sh' to launch backend + frontend."
+```
+
+**Design rationale:** a single shell script, not a Makefile or Docker Compose file — consistent with REPOSITORY_DESIGN.md §1's "Board note" reasoning elsewhere in this project (don't introduce more machinery than a solo prototype needs). Docker was considered and rejected for the same reason PostgreSQL was rejected above: real operational value for a multi-developer/multi-environment deployment, unnecessary complexity for a single-user local research prototype. The script is idempotent-ish by construction (`ollama pull` is a no-op if the model is already present) but is explicitly **not yet tested end-to-end** — that verification is implementation-phase work, stated honestly rather than assumed to work on the first real run.
+
 ---
 
 ## Links
