@@ -140,7 +140,7 @@ def main():
               f"{d['predicted']:10} {d['outcome']:6} {','.join(d['matchedCategories'])}")
 
     # Save machine-readable results for the report
-    with open("/home/claude/rule_based_eval_results.json", "w") as f:
+    with open("C:\\Users\\Mbasa Cabane\\Documents\\Mlu\\SentryPrompt\\docs\\evaluation\\rule_based_eval_results.json", "w") as f:
         json.dump({"summary": summary, "details": detail_rows}, f, indent=2)
 
 
