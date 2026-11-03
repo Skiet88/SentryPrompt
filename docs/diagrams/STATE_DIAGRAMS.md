@@ -69,7 +69,7 @@ stateDiagram-v2
     [*] --> Registered: register() (FR-013)
     Registered --> EmailVerificationPending: EmailVerificationToken issued (FR-014)
 
-    EmailVerificationPending --> EmailVerificationPending: login allowed,\nprompt submission blocked
+    EmailVerificationPending --> EmailVerificationPending: login blocked until verified\n(resend link available)
     EmailVerificationPending --> Verified: token used before expiry
     EmailVerificationPending --> TokenExpired: expiry window elapses
     TokenExpired --> EmailVerificationPending: new token requested
