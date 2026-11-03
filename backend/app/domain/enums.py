@@ -54,11 +54,13 @@ class DetectionTier(StrEnum):
 
 
 class EvaluationOutcome(StrEnum):
-    """EvaluationLogEntry.outcome."""
+    """EvaluationLogEntry.outcome. UNAVAILABLE records a screening where the
+    context-aware check could not complete and nothing else was flagged (NFR-015)."""
 
     FLAGGED = "flagged"
     UNFLAGGED = "unflagged"
     OVERRIDE = "override"
+    UNAVAILABLE = "unavailable"
 
 
 class TestSetCategory(StrEnum):

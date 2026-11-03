@@ -32,3 +32,9 @@ def test_entry_has_no_field_for_prompt_text():
     """NFR-009: content-free by structure, not convention."""
     fields = {f.name for f in dataclasses.fields(build_evaluation_log_entry("r", "unflagged"))}
     assert fields == {"log_id", "result_id", "category_id", "outcome", "timestamp_bucket"}
+
+
+def test_unavailable_entry_has_no_category():
+    assert build_evaluation_log_entry("result-1", "unavailable").outcome is EvaluationOutcome.UNAVAILABLE
+    with pytest.raises(InvalidArgumentError, match="no category"):
+        build_evaluation_log_entry("result-1", "unavailable", "cat-1")

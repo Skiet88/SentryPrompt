@@ -51,6 +51,8 @@ Architecture (P5) was drafted early, out of sequence, because Assignment 3's bri
 
 ## Open Follow-ups (tracked, not hidden)
 
+- **Temporary security exception:** `POST /api/prompts/screen` is served without login, outside production only, until the auth step (backend plan, step 6), which must remove `Settings.unauthenticated_screening_enabled` and require a verified login.
+
 - **Docker:** the backend `Dockerfile` (ARCHITECTURE.md, Setup & Deployment) is added only once the application runs end to end, so that any container problem is clearly separate from application problems during development.
 
 - **Increment 2 extension:** USE_CASES.md and TEST_CASES.md still cover only FR-001 to FR-012. Use cases and test cases for FR-013 to FR-022 have not been written yet.

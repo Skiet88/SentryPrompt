@@ -55,3 +55,24 @@ def test_unsafe_or_invalid_settings_rejected(overrides):
 def test_production_with_https_origins_accepted():
     settings = make(app_env="production", cors_origins=["https://sentryprompt.example"])
     assert settings.is_production and not settings.docs_enabled
+
+
+def test_screening_rate_limit_defaults_and_dev_only_flag():
+    settings = make()
+    assert (settings.screening_rate_limit_per_client, settings.screening_rate_limit_global) == (10, 25)
+    assert settings.unauthenticated_screening_enabled
+    prod = make(app_env="production", cors_origins=["https://sentryprompt.example"])
+    assert not prod.unauthenticated_screening_enabled
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"screening_rate_limit_per_client": 0},
+        {"screening_rate_limit_global": 0},
+        {"rate_limit_window_seconds": 0},
+    ],
+)
+def test_rate_limit_settings_must_be_positive(overrides):
+    with pytest.raises(ValidationError):
+        make(**overrides)

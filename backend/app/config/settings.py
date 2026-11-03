@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.2"
     context_detector_timeout_seconds: float = Field(default=1.5, gt=0, le=10)
 
+    # Screening calls a rate-limited LLM (Groq free tier: ~30 requests/min per
+    # account), so limit per client and in total (SECURITY_RULES.md §4).
+    screening_rate_limit_per_client: int = Field(default=10, gt=0, le=1000)
+    screening_rate_limit_global: int = Field(default=25, gt=0, le=10_000)
+    rate_limit_window_seconds: int = Field(default=60, gt=0, le=3600)
+
     @field_validator("cors_origins")
     @classmethod
     def _no_wildcard_origins(cls, origins: list[str]) -> list[str]:
@@ -51,6 +57,13 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def unauthenticated_screening_enabled(self) -> bool:
+        """TEMPORARY (agreed exception to SECURITY_RULES.md §2): until login
+        exists (backend plan, step 6), the screening endpoint is served only
+        outside production. Step 6 removes this and requires a verified login."""
+        return not self.is_production
 
     @property
     def docs_enabled(self) -> bool:

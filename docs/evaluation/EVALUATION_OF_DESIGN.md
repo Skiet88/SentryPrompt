@@ -37,6 +37,7 @@ The deployed system targets a **small multi-user pilot** such as a class or depa
 | LLM-as-judge prompt injection (a student crafting a prompt to manipulate the context-aware detector's classification) | Medium | Not currently mitigated in MODEL_../architecture/ARCHITECTURE.md — the fixed system prompt reduces but does not eliminate this risk; stated here as a known, unresolved limitation of the LLM-as-judge approach |
 | Browser extension fails open on third-party platform DOM changes (UC2 known limitation) | Medium | Explicitly documented as unresolved in ../requirements/USE_CASES.md; no mitigation designed yet beyond awareness |
 | Password/session compromise | Low | Password hashing and session handling delegated to Supabase Auth (NFR-012); the backend rejects tokens whose session has ended (FR-016); Row Level Security blocks direct browser access to tables (ERD.md §1A) |
+| Abuse of the screening endpoint (LLM quota exhaustion, denial of service) | Medium | Medium | Per-client and global rate limits with `Retry-After` (10 and 25 requests per minute); request size limit; endpoint served only outside production until login exists |
 
 ---
 

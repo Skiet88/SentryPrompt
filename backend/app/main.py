@@ -9,13 +9,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import health_router
+from app.api import health_router, screening_router
+from app.config.composition import build_screening_service
 from app.config.dependencies import get_settings
+from app.config.lazy import Lazy
 from app.config.logging_config import configure_logging
+from app.config.rate_limiter import RateLimitPolicy, SlidingWindowRateLimiter
 from app.config.request_size_limit import RequestSizeLimitMiddleware
 from app.config.security_headers import SecurityHeadersMiddleware
 from app.config.settings import Settings
 from app.exception.handlers import register_exception_handlers
+from app.repository.memory.evaluation_log_entry_repository import InMemoryEvaluationLogEntryRepository
 
 DOCS_PATHS = ("/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json")
 
@@ -53,8 +57,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     register_exception_handlers(app)
+    _wire_screening(app, settings)
     app.include_router(health_router.router)
+    if settings.unauthenticated_screening_enabled:
+        app.include_router(screening_router.router)
     return app
+
+
+def _wire_screening(app: FastAPI, settings: Settings) -> None:
+    """Dependency injection for the screening endpoint. The service is built
+    on first use, so the app (and /health) starts without an LLM key."""
+    evaluation_log = InMemoryEvaluationLogEntryRepository()
+    app.state.evaluation_log = evaluation_log
+    app.state.screening_service = Lazy(
+        lambda: build_screening_service(settings, evaluation_log=evaluation_log)
+    )
+    window = settings.rate_limit_window_seconds
+    app.state.screening_rate_limits = RateLimitPolicy(
+        per_client=SlidingWindowRateLimiter(settings.screening_rate_limit_per_client, window),
+        global_limit=SlidingWindowRateLimiter(settings.screening_rate_limit_global, window),
+    )
 
 
 app = create_app()

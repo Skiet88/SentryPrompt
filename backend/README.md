@@ -79,6 +79,19 @@ Get a free Groq key at https://console.groq.com, and turn on Zero Data
 Retention under Settings -> Data Controls. Check http://localhost:8000/health
 and the interactive API docs at http://localhost:8000/docs.
 
+## Trying the screening endpoint (development only)
+
+With the server running and a Groq key in `.env`:
+
+```bash
+curl -s -X POST http://localhost:8000/api/prompts/screen \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "My ID is 9203105800089 and I take sertraline"}'
+```
+
+Or use the interactive docs at http://localhost:8000/docs. The endpoint is
+not served in production until login is added (backend plan, step 6).
+
 ## Checks
 
 The same checks run on GitHub on every push (`.github/workflows/backend.yml`):
@@ -99,6 +112,8 @@ uv run pip-audit                 # known vulnerabilities in dependencies
   its verdict is `UNAVAILABLE` and the prompt is never treated as clean.
 - Security headers on every response; HSTS in production.
 - Request bodies over `MAX_REQUEST_BYTES` are rejected with 413.
+- Screening is rate-limited per client and in total (`SCREENING_RATE_LIMIT_*`); over the limit returns 429 with `Retry-After`.
+- Validation errors (422) never echo the submitted prompt back.
 - `/docs`, `/redoc` and `/openapi.json` are disabled in production.
 - Startup fails on unsafe settings (`*` in `CORS_ORIGINS`, non-HTTPS origins in production).
 - Server errors return a generic message; details go only to the server log,

@@ -5,6 +5,7 @@ from .app_exceptions import (
     InvalidArgumentError,
     NotFoundError,
     ProviderError,
+    RateLimitExceededError,
     SentryPromptError,
 )
 
@@ -13,5 +14,6 @@ __all__ = [
     "InvalidArgumentError",
     "NotFoundError",
     "ProviderError",
+    "RateLimitExceededError",
     "SentryPromptError",
 ]

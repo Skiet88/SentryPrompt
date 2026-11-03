@@ -23,9 +23,9 @@ def build_evaluation_log_entry(
     occurred_at: datetime | None = None,
 ) -> EvaluationLogEntry:
     parsed_outcome = _require.enum_value(EvaluationOutcome, outcome, "outcome")
-    if parsed_outcome is EvaluationOutcome.UNFLAGGED:
+    if parsed_outcome in (EvaluationOutcome.UNFLAGGED, EvaluationOutcome.UNAVAILABLE):
         if category_id is not None:
-            raise InvalidArgumentError("An unflagged outcome has no category")
+            raise InvalidArgumentError(f"An {parsed_outcome.value} outcome has no category")
     else:
         category_id = _require.identifier(category_id, "category_id")
     return EvaluationLogEntry(
