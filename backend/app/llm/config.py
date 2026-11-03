@@ -2,18 +2,28 @@
 
 A Protocol rather than the app's Settings class, so this layer depends only on
 the fields it uses (interface segregation) and tests can pass a simple object.
+Members are read-only properties: the LLM layer only ever reads configuration.
 """
 
 from typing import Protocol
 
 
 class LLMConfig(Protocol):
-    app_env: str
-    llm_provider: str
-    groq_api_key: str
-    groq_model: str
-    gemini_api_key: str
-    gemini_model: str
-    gemini_paid_tier: bool
-    ollama_url: str
-    ollama_model: str
+    @property
+    def app_env(self) -> str: ...
+    @property
+    def llm_provider(self) -> str: ...
+    @property
+    def groq_api_key(self) -> str: ...
+    @property
+    def groq_model(self) -> str: ...
+    @property
+    def gemini_api_key(self) -> str: ...
+    @property
+    def gemini_model(self) -> str: ...
+    @property
+    def gemini_paid_tier(self) -> bool: ...
+    @property
+    def ollama_url(self) -> str: ...
+    @property
+    def ollama_model(self) -> str: ...

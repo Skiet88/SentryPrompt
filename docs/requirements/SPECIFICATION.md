@@ -35,7 +35,7 @@ This is not merely a UX gap — it is a legal exposure point. Under South Africa
 | 1 | Assess the level of awareness among higher-education students regarding the risks of sharing sensitive information through AI prompts | **Not addressed by this design-phase build** — this is a survey/awareness study, distinct from the system being designed here. Noted honestly as outside this project's individual technical scope, not silently dropped. |
 | 2 | Investigate the types of sensitive information students commonly include in AI prompts | Directly informs the five-category taxonomy in §3 below, and the hand-labeled `../evaluation/TEST_SET.csv` (40 entries spanning exactly these categories) |
 | 3 | Implement mitigation mechanisms that protect students from unintentional data exposure | The screening pipeline itself (FR-001–FR-009): highlight, explain, and the edit/send-anyway/cancel decision (../architecture/AUTH_DESIGN.md, working frontend prototype) |
-| 4 | Propose a context-aware NLP model capable of detecting sensitive information in student AI prompts in real time | MODEL_../architecture/ARCHITECTURE.md — the LLM-as-judge context-aware detector, run in parallel with the rule-based detector |
+| 4 | Propose a context-aware NLP model capable of detecting sensitive information in student AI prompts in real time | MODEL_../architecture/ARCHITECTURE.md — the LLM-as-judge context-aware detector, run on every prompt alongside the rule-based detector |
 
 **Honest scope note:** Objective 1 is a research-methods question (student awareness, likely requiring a survey instrument and ethics clearance) that sits outside what a solo, one-semester design-and-build project can also deliver alongside Objectives 2–4. This project's system design is built to serve Objectives 2–4 directly; Objective 1 is acknowledged here rather than quietly ignored, and would be genuine future work alongside this system, not a gap in this document.
 
@@ -43,7 +43,7 @@ This is not merely a UX gap — it is a legal exposure point. Under South Africa
 
 This project began as a single-semester, individually-built research prototype with a deliberately narrow scope. Following an Agile-driven scope review (permitted explicitly under the course's methodology, provided the project builds atop this original core rather than diverging from it), the scope was expanded to a full account-based platform: user registration, email verification, login, password reset, persistent conversation history, profile management, and an administrator panel.
 
-**What did not change:** the research core — a rule-based detector and a context-aware detector running in parallel on every prompt, compared against a hand-labeled test set — remains the actual contribution of the project (§6). The platform expansion sits around that core, not in place of it.
+**What did not change:** the research core — a rule-based detector and a context-aware detector both running on every prompt, compared against a hand-labeled test set — remains the actual contribution of the project (§6). The platform expansion sits around that core, not in place of it.
 
 **What changed, and the feasibility trade-off accepted with it:**
 

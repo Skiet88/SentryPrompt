@@ -17,11 +17,10 @@ flowchart TD
     B --> C{Non-empty input?}
     C -- No --> D[Show validation error - FR-001]
     D --> A
-    C -- Yes --> E[/Fork: dispatch to both detectors\nin parallel - FR-004/]
-    E --> F[Rule-based detector - FR-002]
-    E --> G[Context-aware detector - FR-003]
-    F --> H[/Join: wait for both/]
-    G --> H
+    C -- Yes --> F[Rule-based detector - FR-002\nlocal, always completes]
+    F --> R[Redact rule findings - NFR-008]
+    R --> G[Context-aware detector on redacted text - FR-003\ntime limit; fails closed - NFR-015]
+    G --> H[/Both results kept separately - FR-004/]
     H --> I[Aggregate verdicts]
     I --> J{Flagged?}
     J -- No --> K[Forward prompt to LLM provider - FR-008]
@@ -45,7 +44,7 @@ flowchart TD
 flowchart TD
     A([Student types prompt into\nthird-party platform's input field]) --> B{Extension intercepts\nbefore native send fires?}
     B -- Yes --> C[Send text to Backend API\nfor screening]
-    C --> D[Join UC1 flow from step 3\n- rule-based + context-aware in parallel]
+    C --> D[Join UC1 flow from step 3\n- both detectors run again]
     D --> E{Flagged?}
     E -- No --> F[Allow platform's native\nsubmission to proceed]
     E -- Yes --> G[Continue to Review Flagged\nContent - UC3, shown in\nextension overlay]

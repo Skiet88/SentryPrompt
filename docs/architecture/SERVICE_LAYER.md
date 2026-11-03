@@ -10,46 +10,26 @@
 | Service | Responsibility | Uses Repositories | Key business rules enforced |
 |---|---|---|---|
 | `AuthService` | Verifies Supabase access tokens on every request; loads the caller's profile; profile updates and account deletion through Supabase's admin API | `UserRepository` (profiles) | Blocks unverified accounts from screening endpoints (FR-014) and suspended accounts from everything; rejects tokens whose session has ended (FR-016). Registration, login and reset themselves are done by Supabase Auth (AUTH_DESIGN.md §0), which also handles duplicate emails (FR-013) and generic login errors (FR-015) |
-| `ScreeningService` | Orchestrates rule-based + context-aware detection in parallel, aggregates result | `ScreeningResultRepository`, `FlaggedSpanRepository`, `EvaluationLogEntryRepository` | Enforces FR-004 (both detectors always run, never short-circuited); enforces NFR-009 (log entry is content-free, structurally, not by convention — see below) |
+| `ScreeningService` | Runs both detectors on every prompt (context-aware on redacted text), aggregates the result and explains every flag | `ScreeningResultRepository`, `FlaggedSpanRepository`, `EvaluationLogEntryRepository` | Enforces FR-004 (both detectors always run, never short-circuited); enforces NFR-009 (log entry is content-free, structurally, not by convention — see below) |
 | `ConversationService` | Persists approved messages, retrieves history, handles deletion | `ConversationRepository`, `MessageRepository` | A `Message` can only be created from a `Prompt` that has already passed through `ScreeningService` — enforced by requiring a `ScreeningResult` reference as a precondition, not just a code comment |
 | `AdminService` | Account management, audit logging | `UserRepository`, `AdminAuditLogRepository` | **Structurally has no dependency on `MessageRepository` or `ConversationRepository` at all** — not just "won't call it," the class doesn't have access to it, enforcing NFR-013 at the dependency-injection level |
 
 **Board note on `AdminService`:** this is the same enforcement pattern used for encryption in Increment 6 — a boundary that matters (admins never see message content) is made structurally impossible to violate by omitting the dependency entirely, rather than relying on a developer remembering not to call a method that exists. This is a deliberate, repeated design pattern across the codebase, not a one-off.
 
-### Example: `ScreeningService` (Python)
+### `ScreeningService` (implemented: `backend/app/service/screening/screening_service.py`)
 
-```python
-class ScreeningService:
-    def __init__(self, rule_detector, context_detector, result_repo, log_repo):
-        self._rule_detector = rule_detector
-        self._context_detector = context_detector
-        self._result_repo = result_repo
-        self._log_repo = log_repo
+The service is a Facade: one call, `screen(raw_text, channel)`, runs the whole pipeline.
 
-    async def screen_prompt(self, prompt: Prompt) -> ScreeningResult:
-        if not prompt.rawText.strip():
-            raise EmptyPromptError()  # FR-001
+1. `build_prompt()` validates the text (not empty, at most 4,000 characters, FR-001).
+2. The rule-based detector runs on the original text (local, always completes).
+3. Everything it found is redacted (`redact_with_map`, NFR-008).
+4. The context-aware detector runs on the **redacted** text, with a time limit; a timeout, provider error or unreadable reply gives `UNAVAILABLE` (fail closed, NFR-015).
+5. `build_screening_result()` records both verdicts separately and computes the aggregate (FR-004).
+6. Every span is mapped back to the student's original text (context-aware spans were found in the redacted text) and explained in plain language (FR-005, FR-006).
 
-        # FR-004: run both detectors independently, in parallel — not a fallback chain
-        rule_result, context_result = await asyncio.gather(
-            self._rule_detector.detect(prompt.rawText),
-            self._context_detector.detect(prompt.rawText),
-        )
+It depends only on interfaces (`Detector`, a category catalog, the explanation generator), injected by the composition root (`backend/app/config/composition.py`). It returns a `ScreeningOutcome` holding the `ScreeningResult`, the explained `FlaggedSpan`s and, when the context check could not complete, a notice for the student. The outcome contains no prompt text.
 
-        result = ScreeningResult(
-            promptId=prompt.promptId,
-            ruleBasedVerdict=rule_result.verdict,
-            contextAwareVerdict=context_result.verdict,
-            aggregatedVerdict=rule_result.verdict or context_result.verdict,
-        )
-        self._result_repo.save(result)
-
-        # NFR-009: log entry never receives prompt.rawText — the log method's signature
-        # doesn't even accept it, so this isn't a runtime check, it's a compile-time one.
-        self._log_repo.save(EvaluationLogEntry.from_result(result))  # no rawText parameter exists
-
-        return result
-```
+**Revision note:** an earlier design ran both detectors concurrently on the raw prompt text. That would send rule-detected values (ID numbers, card numbers) to the external LLM, contradicting NFR-008, so the context-aware detector now waits for redaction. Persistence and content-free evaluation logging (NFR-009) are added with the endpoint and database steps.
 
 ---
 

@@ -86,7 +86,7 @@ flowchart LR
   1. Student types a prompt into the web app.
   2. Student submits the prompt.
   3. System validates the input is non-empty (FR-001).
-  4. System runs rule-based and context-aware detection in parallel (FR-002, FR-003, FR-004).
+  4. System runs rule-based detection, redacts its findings, then runs context-aware detection on the redacted text (FR-002, FR-003, FR-004, NFR-008).
   5. System aggregates results.
   6. If no flag: proceed to UC7. If flagged: proceed to UC3.
 - **Alternative Flow:** Empty input submitted → system rejects with a validation message (FR-001); no detection run.
