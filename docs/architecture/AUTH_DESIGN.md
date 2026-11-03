@@ -22,6 +22,16 @@ The flows in §2–§4 describe the required **behaviour**. They are implemented
 
 **Why:** authentication is security-critical code with many edge cases (token storage, expiry, email-link handling, hashing). Using a maintained service removes that code from a solo build, while the project-specific rules (verified-before-prompting, suspension, the admin content boundary) stay in our backend where they are tested.
 
+### 0.1 Account decisions
+
+1. **Unverified accounts cannot log in.** With email confirmation turned on, Supabase Auth refuses login until the verification link is used. This is stricter than the original FR-014 wording (log in, but no prompts), so FR-014 was updated to match. The login page offers to resend the verification link. The backend still checks `email_verified` on every request (§5), so the rule holds even if a Supabase setting is changed by mistake.
+2. **Suspended accounts are blocked in two places.**
+   - *Our backend (source of truth):* `profiles.status = suspended` makes every API request return 403 (§5). This is what the audit log records and what the admin panel shows.
+   - *Supabase Auth:* the backend also bans the account through Supabase's admin API, so the student cannot log in or refresh an existing token, and gets a clear "account suspended" message at login. Reinstating removes the ban.
+   - *Order and failure handling:* the status change and its `AdminAuditLog` entry are written in one database transaction first; the Supabase ban follows. If the ban call fails, the account is still blocked by the backend check (fail closed), and the failure is logged and reported to the admin so it can be retried.
+3. **The first admin is created by hand.** Every new account is a student. The project owner promotes the first admin with one SQL statement in the Supabase dashboard (docs/setup/SUPABASE_SETUP.md, step 7). There is deliberately **no API endpoint or screen that changes a user's role**, so no one can make themselves, or anyone else, an admin through the application. Role changes therefore require access to the Supabase dashboard itself, which must be protected with a strong password and two-factor authentication.
+4. **Supabase setup** is documented step by step in docs/setup/SUPABASE_SETUP.md.
+
 **Settings to configure in the Supabase dashboard** (Authentication settings): require email confirmation; email-link expiry; site URL and redirect URLs for the verification and reset links; minimum password length; custom SMTP. Exact setting names should be checked in the dashboard at build time.
 
 ---

@@ -60,7 +60,7 @@ AUTH_DESIGN.md §6 already establishes that every admin endpoint checks `User.ro
 2. Admin clicks the context-sensitive action button (`Suspend` if currently active, `Reinstate` if currently suspended).
 3. Request sent to the corresponding endpoint (`POST /api/admin/users/{id}/suspend` or `/reinstate`).
 4. Backend sets `User.status` and writes one `AdminAuditLog` entry **atomically with** the status change (AUTH_DESIGN.md §6 — not a best-effort afterthought log call).
-5. On suspend, all active `Session` rows for that user are invalidated server-side (STATE_DIAGRAMS.md §3 — a suspended account should not retain a live session).
+5. On suspend, the backend also bans the account in Supabase Auth, which ends the student's ability to log in or refresh a token (STATE_DIAGRAMS.md §3 — a suspended account should not retain a live session). On reinstate, the ban is removed. If the Supabase call fails, the backend's own status check still blocks the account, and the admin is told the ban needs retrying (AUTH_DESIGN.md §0.1).
 6. Panel table refreshes to reflect the new status; audit log table gains one new row.
 
 **Screenshot evidence:** the captured `/admin` prototype screenshot shows the account table (one seeded student account, status `ACTIVE`, with a `Suspend` action) and an empty audit log table (`No actions recorded yet`) — an honest reflection of a freshly seeded prototype where no admin action has been performed yet, not a missing feature.
@@ -69,7 +69,7 @@ AUTH_DESIGN.md §6 already establishes that every admin endpoint checks `User.ro
 
 ## 6. What This Document Does Not Cover
 
-- **Admin account creation/promotion** — how a `User.role` becomes `admin` in the first place is not specified here. At this design phase, the prototype assumes a seeded demo admin account (`admin@sentryprompt.dev`, visible on the landing page) rather than a self-service admin-promotion flow, which is out of scope for a solo capstone prototype.
+- **Admin account creation/promotion** — the first admin is promoted by hand with one SQL statement in the Supabase dashboard (../setup/SUPABASE_SETUP.md, step 7). The application has deliberately no endpoint or screen that changes a user's role (AUTH_DESIGN.md §0.1), so admin promotion cannot be abused through the application.
 - **Bulk actions** (e.g. suspend multiple accounts at once) — not required by FR-021 as written, not designed here.
 - **Audit log filtering/search** — the current design is a flat, reverse-chronological table sufficient for FR-022's requirement; pagination/filtering would be a build-phase refinement once real usage volume exists, not a design-phase requirement.
 

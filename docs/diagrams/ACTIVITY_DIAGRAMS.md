@@ -86,13 +86,14 @@ flowchart TD
 flowchart TD
     A([Student opens Register page]) --> B[Enter email + password]
     B --> C{Valid email format,\npassword meets strength rules,\nemail not already registered?}
-    C -- No --> D[Show inline error\n- duplicate email named explicitly]
+    C -- No, invalid format or weak password --> D[Show inline error]
+    C -- Email already registered --> D2[Same 'check your email' message\nas a new sign-up - never reveals\nthat the email exists]
     D --> B
     C -- Yes --> E[Create User: emailVerified = false]
     E --> F[Hash password - NFR-012]
     F --> G[Issue EmailVerificationToken\nwith expiry window]
     G --> H[Send verification email]
-    H --> I([Student can log in,\nprompt submission blocked])
+    H --> I([Student cannot log in\nuntil email is verified])
     I --> J{Student clicks link\nbefore expiry?}
     J -- Yes --> K[Mark token used = true\nSet User.emailVerified = true]
     K --> L([Account Active - full access])
@@ -112,14 +113,15 @@ flowchart TD
     A([Student enters email + password]) --> B{Credentials valid?}
     B -- No --> C[Generic error: invalid email\nor password - does not reveal which]
     C --> A
-    B -- Yes --> D{User.status = suspended?}
-    D -- Yes --> E[Reject login\naccount suspended]
-    D -- No --> F{emailVerified = true?}
-    F -- No --> G[Create Session\nprompt submission blocked]
-    F -- Yes --> H[Create Session\nfull access]
-    G --> I([Logged in, unverified])
+    B -- Yes --> F{emailVerified = true?}
+    F -- No --> G[Reject login:\nverify your email first\n- offer to resend the link]
+    F -- Yes --> D{Account suspended?}
+    D -- Yes --> E[Reject login:\naccount suspended]
+    D -- No --> H[Create Session\nfull access]
     H --> J([Logged in, active])
 ```
+
+**Implementation (Supabase Auth, AUTH_DESIGN.md §0.1):** Supabase rejects login for unverified accounts and for suspended (banned) accounts; the backend re-checks both on every request as defence in depth.
 
 **Notes:** the account-enumeration protection from FR-015's acceptance criterion (invalid email vs. invalid password must look identical to the student) is shown as a single merged error branch, not two separate ones — the diagram itself enforces the non-disclosure the requirement demands.
 
