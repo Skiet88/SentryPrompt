@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Self
 
-from app.domain import ChatMessage
 from app.exception import ConfigurationError, ProviderError
 
+from ..chat_message import ChatMessage
 from ..config import LLMConfig
 from ..provider import LLMProvider
 from ..registry import provider_registry

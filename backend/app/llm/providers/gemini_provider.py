@@ -3,9 +3,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Self
 
-from app.domain import ChatMessage, ChatRole
+from app.domain import MessageRole
 from app.exception import ConfigurationError, ProviderError
 
+from ..chat_message import ChatMessage
 from ..config import LLMConfig
 from ..provider import LLMProvider
 from ..registry import provider_registry
@@ -57,7 +58,7 @@ class GeminiProvider(LLMProvider):
 
         contents = [
             types.Content(
-                role="model" if m.role is ChatRole.ASSISTANT else "user",
+                role="model" if m.role is MessageRole.ASSISTANT else "user",
                 parts=[types.Part(text=m.content)],
             )
             for m in messages

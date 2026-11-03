@@ -39,9 +39,9 @@ Entity-specific repositories extend this with only the queries that entity actua
 | EvaluationLogEntry | `EvaluationLogEntryRepository` | **No `delete()` method exposed** — append-only, enforces NFR-009 at the interface level |
 | TestSetEntry | `TestSetEntryRepository` | Used only by the evaluation harness (Increment 8), never by live-path services |
 | User | `UserRepository` | Adds `find_by_email()` — needed for login (FR-015) |
-| Session | `SessionRepository` | Adds `find_by_token()`, `delete_all_for_user()` (FR-016 logout, FR-020 account deletion) |
-| EmailVerificationToken | `EmailVerificationTokenRepository` | Adds `find_by_token()` |
-| PasswordResetToken | `PasswordResetTokenRepository` | Adds `find_by_token()` |
+| Session | *None (Supabase Auth)* | Stored and invalidated by Supabase Auth; no repository needed (DOMAIN_MODEL.md §6) |
+| EmailVerificationToken | *None (Supabase Auth)* | As above |
+| PasswordResetToken | *None (Supabase Auth)* | As above |
 | Conversation | `ConversationRepository` | Adds `find_by_user_id()` |
 | Message | `MessageRepository` | Adds `find_by_conversation_id()`; `save()` always writes encrypted content (NFR-011) |
 | AdminAuditLog | `AdminAuditLogRepository` | **No `delete()` or `update()` — immutable by design** (FR-022) |

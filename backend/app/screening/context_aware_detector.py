@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from app.domain import ClassificationResult
 from app.llm import LLMProvider
 
 from .classification_parser import ClassificationParser
+from .detection import ContextDetectionResult
 from .prompt_template import PromptTemplate
 
 
@@ -15,7 +15,7 @@ class ContextAwareDetector:
         self._prompt = prompt
         self._parser = parser
 
-    def detect(self, text: str) -> ClassificationResult:
+    def detect(self, text: str) -> ContextDetectionResult:
         raw_reply = self._provider.complete_json(self._prompt.text, text)
         return self._parser.parse(
             raw_reply,

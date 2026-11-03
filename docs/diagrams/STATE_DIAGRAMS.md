@@ -107,6 +107,8 @@ stateDiagram-v2
 
 ## 3. Session Lifecycle
 
+**Implementation note:** sessions are managed by Supabase Auth (../architecture/AUTH_DESIGN.md §0). This diagram remains the required behaviour; Supabase implements it, and the backend checks it on every request.
+
 **Traces to:** FR-015, FR-016, NFR-012
 **Entity modeled:** `Session`
 
@@ -137,6 +139,8 @@ stateDiagram-v2
 ---
 
 ## 4. Verification / Password Reset Token Lifecycle
+
+**Implementation note:** verification and reset tokens are managed by Supabase Auth (../architecture/AUTH_DESIGN.md §0); this diagram is the required behaviour.
 
 **Traces to:** FR-014, FR-017
 **Entities modeled:** `EmailVerificationToken`, `PasswordResetToken` (shared pattern — same state shape, different entity)

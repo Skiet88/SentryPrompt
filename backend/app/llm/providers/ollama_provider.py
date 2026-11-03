@@ -5,9 +5,9 @@ from typing import Self
 
 import httpx
 
-from app.domain import ChatMessage
 from app.exception import ProviderError
 
+from ..chat_message import ChatMessage
 from ..config import LLMConfig
 from ..provider import LLMProvider
 from ..registry import provider_registry

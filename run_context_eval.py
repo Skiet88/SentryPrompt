@@ -70,14 +70,14 @@ def main():
         latencies.append(time.perf_counter() - started)
         parse_failures += result.parse_failed
 
-        context_flag = bool(result.flags)
+        context_flag = bool(result.spans)
         aggregated_flag = context_flag or bool(rule_flags)
         details.append({
             "entryId": row["entryId"], "category": row["groundTruthCategory"],
             "groundTruth": "FLAG" if actual else "NO_FLAG",
             "contextOutcome": outcome(context_flag, actual),
             "aggregatedOutcome": outcome(aggregated_flag, actual),
-            "contextCategories": sorted({f.category for f in result.flags}),
+            "contextCategories": sorted({f.category for f in result.spans}),
             "parseFailed": result.parse_failed,
         })
         print(f"{row['entryId']}  context={details[-1]['contextOutcome']}  "
