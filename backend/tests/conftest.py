@@ -7,7 +7,7 @@ from dataclasses import dataclass, replace
 
 import pytest
 
-from app.domain import ChatMessage
+from app.llm import ChatMessage
 from app.llm import LLMProvider
 
 
@@ -54,3 +54,10 @@ class FakeProvider(LLMProvider):
 @pytest.fixture
 def config() -> FakeConfig:
     return FakeConfig()
+
+
+@pytest.fixture
+def aware_time():
+    from datetime import datetime, timezone
+
+    return datetime(2026, 11, 3, 14, 37, 12, tzinfo=timezone.utc)

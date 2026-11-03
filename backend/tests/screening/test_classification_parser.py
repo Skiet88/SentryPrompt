@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from app.domain import ContextCategory
+from app.domain import DetectorSource
 from app.screening.classification_parser import ClassificationParser
 
 TEXT = "I've been on sertraline for two months and I'm struggling to focus"
@@ -15,8 +15,9 @@ def parse(raw: str):
 
 def test_parses_valid_flag():
     result = parse(json.dumps({"flags": [{"category": "medical", "span": "sertraline", "confidence": 0.9}]}))
-    [flag] = result.flags
-    assert flag.category is ContextCategory.MEDICAL and TEXT[flag.start:flag.end] == "sertraline"
+    [span] = result.spans
+    assert span.category == "MEDICAL" and TEXT[span.start:span.end] == "sertraline"
+    assert span.detector_source is DetectorSource.CONTEXT and span.confidence == 0.9
     assert not result.parse_failed
     assert (result.provider, result.model, result.prompt_version) == ("groq", "m", "v1")
 
@@ -39,4 +40,4 @@ def test_drops_invalid_flags_but_keeps_valid_ones():
         "not a dict",
         {"category": "MEDICAL", "span": "sertraline"},
     ]})
-    assert [f.span for f in parse(raw).flags] == ["sertraline"]
+    assert [TEXT[s.start:s.end] for s in parse(raw).spans] == ["sertraline"]

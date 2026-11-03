@@ -9,7 +9,7 @@
 
 | ID | Requirement | Acceptance Criteria | Traces to |
 |---|---|---|---|
-| FR-001 | The system shall accept free-text prompt input from the student via the web chat application. | Text input accepted up to a defined max length; empty input rejected with a clear message. | Student |
+| FR-001 | The system shall accept free-text prompt input from the student via the web chat application. | Text input accepted up to 4,000 characters; empty or longer input rejected with a clear message. | Student |
 | FR-002 | The system shall screen every submitted prompt using rule-based pattern detection before forwarding it to the model. | ID numbers, phone numbers, emails, and bank details are detected with documented regex/pattern rules. | Student, IT Security |
 | FR-003 | The system shall screen every submitted prompt using a context-aware (semantic) detector for categories not caught by rules. | Medical and institutional-confidential language is classified via the LLM-backed context-aware detector, independent of the rule-based result. | Student, Data Protection Officer |
 | FR-004 | The system shall run rule-based and context-aware detection in parallel on every prompt, not as a fallback chain. | Both detectors execute and return results for every request; results are logged separately before aggregation. | Project Supervisor (research validity) |

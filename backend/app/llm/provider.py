@@ -7,8 +7,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import ClassVar, Self
 
-from app.domain import ChatMessage
-
+from .chat_message import ChatMessage
 from .config import LLMConfig
 
 

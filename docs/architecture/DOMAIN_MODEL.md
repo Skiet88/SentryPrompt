@@ -138,7 +138,7 @@ classDiagram
 | **Message** | `messageId`, `conversationId`, `role` (user / assistant), `content` *(encrypted at rest — NFR-011)*, `createdAt` | — | Belongs to one `Conversation`; a user-role `Message` is created from an approved `Prompt` once screening clears it |
 | **AdminAuditLog** | `logId`, `adminUserId`, `targetUserId`, `actionType`, `timestamp`, `details` | — | References `User` (admin) and `User` (target) — account-level only, never references `Message` content (FR-021, NFR-013) |
 
-**Implementation note (stack revision):** these entities are the logical model. In the implemented system, `User`'s identity fields (`email`, `passwordHash`, `emailVerified`) and the `Session`, `EmailVerificationToken` and `PasswordResetToken` entities are managed by Supabase Auth; `displayName`, `role` and `status` live in a `profiles` table. See ERD.md §1A and AUTH_DESIGN.md §0.
+**Implementation note:** three of these entities (`Session`, `EmailVerificationToken`, `PasswordResetToken`) are managed by Supabase Auth rather than implemented in our code. See §6 for the full mapping from this model to the code.
 
 ### How the Product Layer Connects to the Research Layer
 
@@ -238,6 +238,81 @@ classDiagram
 ```
 
 **Total entity count: 14** (7 research-domain + 7 platform-domain), up from the originally scoped 7.
+
+---
+
+## 6. Implementation Mapping (model → code)
+
+The 14 entities above are the logical model and remain the reference for the report. This section records how each one is implemented, so a reader can trace every entity to its code.
+
+### 6.1 Where each entity lives
+
+| # | Entity | Implemented by | Code |
+|---|---|---|---|
+| 1 | Prompt | Our code (in memory only, never persisted) | `backend/app/domain/prompt.py`, `factory/prompt_factory.py` |
+| 2 | ScreeningResult | Our code | `domain/screening_result.py`, `factory/screening_result_factory.py` |
+| 3 | FlaggedSpan | Our code | `domain/flagged_span.py`, `factory/flagged_span_factory.py` |
+| 4 | DetectionCategory | Our code | `domain/detection_category.py`, `factory/detection_category_factory.py` |
+| 5 | RulePattern | Our code | `domain/rule_pattern.py`, `factory/rule_pattern_factory.py` |
+| 6 | EvaluationLogEntry | Our code | `domain/evaluation_log_entry.py`, `factory/evaluation_log_entry_factory.py` |
+| 7 | TestSetEntry | Our code | `domain/test_set_entry.py`, `factory/test_set_entry_factory.py` |
+| 8 | User | Our code (profile) + Supabase Auth (identity, password) | `domain/user.py`, `factory/user_factory.py` |
+| 9 | Session | **Supabase Auth** | Supabase `auth` schema; checked by the backend on every request (AUTH_DESIGN.md §0) |
+| 10 | EmailVerificationToken | **Supabase Auth** | Supabase `auth` schema |
+| 11 | PasswordResetToken | **Supabase Auth** | Supabase `auth` schema |
+| 12 | Conversation | Our code | `domain/conversation.py`, `factory/conversation_factory.py` |
+| 13 | Message | Our code (content encrypted by the repository, NFR-011) | `domain/message.py`, `factory/message_factory.py` |
+| 14 | AdminAuditLog | Our code | `domain/admin_audit_log.py`, `factory/admin_audit_log_factory.py` |
+
+**11 entities are implemented in our code; 3 are handled by Supabase Auth.** All 11 are immutable (frozen dataclasses) and created only through their factory, which validates every field and raises a clear error naming the field.
+
+### 6.2 Attribute differences
+
+| Entity | Difference | Reason |
+|---|---|---|
+| User | No `passwordHash` | Passwords and hashes are held only by Supabase Auth; our code never sees them (NFR-012) |
+| EvaluationLogEntry | `timestampBucket` is the UTC hour, e.g. `2026-11-03T14:00Z` | Coarse enough that a log entry cannot be matched to an individual request by exact time (NFR-009) |
+| Prompt | `rawText` limited to 4,000 characters | FR-001's "defined max length"; well above a typical prompt (~200 words, NFR-010) |
+
+Python naming is used in code (`prompt_id` for `promptId`, and so on); the attributes are otherwise as specified.
+
+### 6.3 Allowed values for String attributes
+
+Each String attribute that takes a fixed set of values is an enum in `backend/app/domain/enums.py`:
+
+| Attribute | Values |
+|---|---|
+| `Prompt.sourceChannel`, `Conversation.channel` | webapp, extension |
+| `Prompt.status` | draft, validating, rejected, screening, clean, flagged, edit_requested, overridden, cancelled, forwarded, response_received, discarded (STATE_DIAGRAMS.md §1) |
+| `ScreeningResult` verdicts, `TestSetEntry.groundTruthLabel` | FLAG, NO_FLAG |
+| `FlaggedSpan.detectorSource` | rule, context |
+| `DetectionCategory.tier` | rule-based, context-aware |
+| `EvaluationLogEntry.outcome` | flagged, unflagged, override |
+| `TestSetEntry.groundTruthCategory` | ID_NUMBER, FINANCIAL, CONTACT_LOCATION, MEDICAL, INSTITUTIONAL, CLEAN |
+| `User.role` | student, admin |
+| `User.status` | active, suspended |
+| `Message.role` | user, assistant |
+| `AdminAuditLog.actionType` | suspend, reinstate |
+
+### 6.4 Where each method is implemented
+
+Entities are immutable data, so methods that only *read* an entity's own fields are on the entity; methods that change state, call other components, or touch storage are in the factory or service layer (single responsibility).
+
+| Method in the class diagram | Implemented as |
+|---|---|
+| `Prompt.validate()` | `build_prompt()` rejects empty or over-long text (FR-001) |
+| `Prompt.submit()` | `ScreeningService` (step 3) |
+| `ScreeningResult.aggregate()` | `ScreeningResult.aggregate()`; the factory always computes the aggregated verdict |
+| `ScreeningResult.isFlagged()` | `ScreeningResult.is_flagged` |
+| `FlaggedSpan.getExplanation()` | `ExplanationGenerator` in the screening layer (step 3) |
+| `RulePattern.matches(text)` | `RulePattern.matches()` |
+| `TestSetEntry.runThroughDetectors()` | The evaluation harness (`run_rule_eval.py`, `run_context_eval.py`) |
+| `User.register()`, `User.authenticate()` | Supabase Auth (AUTH_DESIGN.md §0) |
+| `User.deleteAccount()` | Account deletion service (AUTH_DESIGN.md §8.2) |
+| `Session.invalidate()`, `EmailVerificationToken.verify()`, `PasswordResetToken.resetPassword()` | Supabase Auth |
+| `Conversation.delete()` | `ConversationService` (FR-020) |
+
+Two read-only helpers were added to `User`: `is_admin` and `can_submit_prompts` (verified and active, FR-014/FR-021), so the rule is defined once rather than repeated in every service.
 
 ## Links (updated)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
