@@ -38,7 +38,7 @@ This is the design for the script that answers SentryPrompt4's actual research q
 
 **Status: rule-based detector run for real. Context-aware detector and the aggregated verdict remain pending — genuinely blocked, not deferred out of convenience.**
 
-The rule-based detector requires no external dependency (it is pure regex, already implemented client-side in the UI prototype's `src/lib/screening.ts`), so it was runnable at Design Phase without contradicting the anti-fabrication stance below. The context-aware detector depends on a local `llama3.2` instance via Ollama (MODEL_../architecture/ARCHITECTURE.md) — a Testing Phase / build-phase dependency not available at Design Phase. Rather than leave the whole table blank or fabricate the remaining two-thirds of it, the one detector that could be run honestly, was.
+The rule-based detector requires no external dependency (it is pure regex, already implemented client-side in the UI prototype's `src/lib/screening.ts`), so it was runnable at Design Phase without contradicting the anti-fabrication stance below. The context-aware detector originally depended on a local `llama3.2` instance via Ollama (MODEL_ARCHITECTURE.md), which was not available at Design Phase; it now runs through the LLM provider interface (Groq by default) via `run_context_eval.py`, and its results are pending a run with an API key. Rather than leave the whole table blank or fabricate the remaining two-thirds of it, the one detector that could be run honestly, was.
 
 **Method:** `screening.ts`'s `RULE_PATTERNS` (the six regex rules — SA ID, student number, phone, email, bank/card, address) were ported verbatim to a standalone Python script (`run_rule_eval.py`, repo root) and run directly against all 40 entries of `TEST_SET.csv`, bypassing any UI or API layer — consistent with §2's bypass-the-API design. No detector logic was altered for this run.
 
@@ -52,7 +52,7 @@ The rule-based detector requires no external dependency (it is pure regex, alrea
 |---|---|---|---|---|
 | **Rule-Based only (Revision 2, current)** | **87.5%** | 50.0% (all categories) / **100%** (rule-tier categories only*) | **3.85%** | 80.0% |
 | Rule-Based only (Revision 1, original port) | 85.7% | 42.9% / 85.7% | 3.85% | 77.5% |
-| Context-Aware only | *pending — requires local Ollama/llama3.2, a Testing Phase dependency* | — | — | — |
+| Context-Aware only | *pending — run `run_context_eval.py` with a free Groq API key* | — | — | — |
 | Aggregated (parallel) | *pending — requires Context-Aware detector above* | — | — | — |
 
 *\*ID_NUMBER, FINANCIAL, CONTACT_LOCATION only. `../requirements/SPECIFICATION.md` §3 assigns MEDICAL and INSTITUTIONAL exclusively to the context-aware tier — all 7 of the rule-based detector's remaining false negatives (Revision 2) are exactly these categories, a structural (by-design) miss, not a detector defect. Counting them against rule-based recall without qualification would misrepresent what this detector was ever built to catch; the second figure is the fairer per-tier number.*

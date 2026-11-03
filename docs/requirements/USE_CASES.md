@@ -13,7 +13,7 @@
 | **Student** | Primary human actor | Student |
 | **Researcher** *(the student, in an evaluation role — distinct interaction pattern from day-to-day use)* | Human actor | Project Supervisor / Assessor (evaluation need) |
 | **System Administrator** *(the student, in a deployment/config role)* | Human actor | IT Security / Systems Administrator |
-| **Ollama (Local LLM)** | External system actor | Ollama Maintainers |
+| **LLM Provider (Groq by default)** | External system actor | LLM Provider |
 | **Third-Party AI Platform** | External system actor | (implied by extension use case) |
 
 **Why only 5 actors, not 6+:** the supervisor's prior brief (written for team projects) targets 6+ actors. A sixth actor was deliberately **not** invented to hit that number. An earlier draft of this document listed "Backend API" as a sixth actor — that was a modeling error: in UML, an actor must be external to the system boundary, and the Backend API is part of the system under design, not an external party interacting with it. Removing it is more defensible than padding the count with something that doesn't belong. Three of the five actors above being the same physical person in different functional roles is intentional (each role has a genuinely different goal and interaction pattern with the system), not a workaround.
@@ -31,7 +31,7 @@ flowchart LR
     end
 
     subgraph ExternalSystems[" "]
-        Ollama[[Ollama - Local LLM]]
+        LLM[[LLM Provider - Groq by default]]
         ThirdParty[[Third-Party AI Platform]]
     end
 
@@ -65,8 +65,8 @@ flowchart LR
     Admin --> UC10
 
     UC2 --> ThirdParty
-    UC1 --> Ollama
-    UC5 --> Ollama
+    UC1 --> LLM
+    UC5 --> LLM
 ```
 
 **Legend:** solid arrows = actor-initiates-use-case or use-case-leads-to-use-case; dashed arrows labeled `include` = the base use case always triggers the included one; dashed arrows labeled `extend` = the extending use case optionally branches from the base, arrow drawn from the extending use case to the base it extends (per UML convention — corrected from the prior draft, which had this backwards).
@@ -125,14 +125,14 @@ flowchart LR
 - **Traces to:** FR-007, FR-008
 - **Actor:** Student
 - **Precondition:** UC3 has occurred.
-- **Postcondition:** Original (flagged) prompt is forwarded to Ollama despite the flag; the override is logged distinctly from an unflagged pass-through.
-- **Basic Flow:** Student selects "Send Anyway" → system logs an explicit override event (NFR-009 still applies — content itself is not logged, only that an override occurred) → prompt forwarded to Ollama → proceed to UC7.
+- **Postcondition:** Original (flagged) prompt is forwarded to LLM provider despite the flag; the override is logged distinctly from an unflagged pass-through.
+- **Basic Flow:** Student selects "Send Anyway" → system logs an explicit override event (NFR-009 still applies — content itself is not logged, only that an override occurred) → prompt forwarded to LLM provider → proceed to UC7.
 
 ### UC6 — Cancel Submission
 - **Traces to:** FR-007
 - **Actor:** Student
 - **Precondition:** UC3 has occurred.
-- **Postcondition:** Prompt is discarded; nothing forwarded to Ollama or the third-party platform.
+- **Postcondition:** Prompt is discarded; nothing forwarded to LLM provider or the third-party platform.
 
 ### UC8 — Run Evaluation Against Test Set
 - **Traces to:** FR-012
@@ -160,7 +160,7 @@ Per the assignment guidance ("select 8 critical use cases"), the following two a
 
 | Use Case | One-line description | Why not detailed |
 |---|---|---|
-| **UC7 — View AI Response** | Student views Ollama's generated response, displayed in whichever interface (web app or third-party platform) the prompt originated from. Traces to FR-009. | Low complexity — a straightforward display step with no branching logic or decision points worth a full spec. |
+| **UC7 — View AI Response** | Student views the LLM provider's generated response, displayed in whichever interface (web app or third-party platform) the prompt originated from. Traces to FR-009. | Low complexity — a straightforward display step with no branching logic or decision points worth a full spec. |
 | **UC10 — Configure Rule Patterns** | Administrator edits the rule-based detector's pattern configuration file to add/adjust a detection category. | Administrative/maintenance use case (supports NFR-005), not part of the core research-facing flow the other 8 use cases describe. |
 
 ## Links

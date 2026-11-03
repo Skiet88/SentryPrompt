@@ -67,7 +67,7 @@ This table exists so the independence claim (DOMAIN_MODEL.md, Increment 2A) has 
 ## 5. What This Document Does Not Cover
 
 - The actual precision/recall/false-positive **numbers** — that's Increment 8's deliverable; this document specifies the pipeline the numbers will come from, not the numbers themselves.
-- Model architecture details for the context-aware (Ollama-backed) detector — also Increment 8.
+- Model architecture details for the context-aware (LLM-provider-backed) detector — also Increment 8.
 - Deletion/cascade behavior for `Message`/`Conversation` rows — now specified in AUTH_DESIGN.md §8.2, not this document (kept there since it's an Auth/account-lifecycle concern, not a data-pipeline-flow concern).
 
 ## Links

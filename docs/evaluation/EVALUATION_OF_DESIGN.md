@@ -6,11 +6,11 @@
 
 ## 9.1 Feasibility Assessment
 
-**Technical feasibility:** the chosen stack (React/Vite/Tailwind, FastAPI, SQLite, local Ollama) supports every functional requirement designed so far — confirmed by ../requirements/TRACEABILITY_MATRIX.md, where every FR maps to a concrete artefact. The one open technical question is NFR-010 (2-second screening budget): the design is architecturally sound (parallel detection, no sequential bottleneck), but **has not been empirically measured**, since `llama3.2` local inference speed depends on hardware that hasn't been benchmarked yet. This is stated as an open risk (§9.4), not assumed to pass.
+**Technical feasibility:** the chosen stack (React/Vite/Tailwind, FastAPI, SQLite, Groq-hosted LLM via a provider interface) supports every functional requirement designed so far — confirmed by ../requirements/TRACEABILITY_MATRIX.md, where every FR maps to a concrete artefact. The one open technical question is NFR-010 (2-second screening budget): the design is architecturally sound (parallel detection, no sequential bottleneck), but **has not been empirically measured**, although moving inference to Groq's hosted API removes the dependency on local hardware speed; `run_context_eval.py` records median and maximum latency so this can be checked with real numbers. This is stated as an open risk (§9.4), not assumed to pass.
 
 **Operational feasibility:** this project has **no real end users** — evaluation is self-tested only (confirmed early in this project's scope decisions) and stakeholders in ../requirements/STAKEHOLDER_ANALYSIS.md are representative roles, not interviewed individuals. This materially limits what can be claimed about usability (NFR-001, NFR-002) — those requirements are verified by design walkthrough, not user testing, and that limitation is stated here rather than implied to be more rigorous than it is.
 
-**Economic feasibility:** all infrastructure is free and local (Ollama, SQLite) — no cloud costs, no paid API dependency. The only real cost is time, addressed directly below.
+**Economic feasibility:** all infrastructure is free: SQLite locally, and Groq's free API tier for the LLM (about 30 requests per minute, well above a capstone's load). If usage ever outgrows the free tier, Groq's paid rate for Llama 3.1 8B is roughly US$0.03 per 1,000 screened messages. The only real cost is time, addressed directly below.
 
 **Honest feasibility risk, stated plainly:** the project's scope expanded mid-semester from a single-user research prototype (7 entities) to a full account-based platform (14 entities) — documented in ../requirements/PROJECT_BACKLOG.md's scope-change log. This was a deliberate, informed decision (Assignment 4's Agile-update allowance was confirmed to permit it), but it is a genuinely larger build on the same solo timeline, and that trade-off is carried into the risk table below rather than hidden.
 
@@ -22,7 +22,7 @@ This prototype explicitly targets **single-user local load** (NFR-007), not conc
 
 - The **NLP Screening Service is its own Container** (../architecture/ARCHITECTURE.md), separable from the Backend API — it could be deployed as an independent service without a redesign if concurrent load were ever required.
 - The **Repository pattern's Factory abstraction** (../architecture/REPOSITORY_DESIGN.md §4) means swapping SQLite for a production database requires no change to the Service Layer above it.
-- **What would NOT scale as-is:** the Evaluation Log Store (SQLite/JSON file) and the local Ollama instance are both single-machine-appropriate choices; concurrent multi-user load would require both to move to shared infrastructure, which is explicitly out of scope for this iteration (../requirements/SPECIFICATION.md §5).
+- **What would NOT scale as-is:** the Evaluation Log Store (SQLite/JSON file) is a single-machine-appropriate choice, and the LLM provider's free-tier rate limit (about 30 requests per minute on Groq) caps concurrent use; multi-user load would require shared log storage and a paid provider tier, which is explicitly out of scope for this iteration (../requirements/SPECIFICATION.md §5).
 
 ---
 

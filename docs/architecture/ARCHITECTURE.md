@@ -10,7 +10,7 @@ Higher Education Technology / Data Privacy & AI Safety — see [../requirements/
 Students unknowingly expose sensitive personal and institutional data in AI prompts, with no interception mechanism in place before transmission to a third-party model. See [../requirements/SPECIFICATION.md](../requirements/../requirements/SPECIFICATION.md) for the complete problem statement and POPIA context.
 
 ## Individual Scope & Feasibility
-Research prototype expanded to a full account-based platform (registration, login, persistent conversation history, admin panel) alongside the core screening research; one shared backend consumed by two thin client surfaces (web app, browser extension); local Ollama backend removes external infrastructure dependency. See [../requirements/SPECIFICATION.md](../requirements/../requirements/SPECIFICATION.md) §1.3 for full justification and the accepted feasibility trade-off.
+Research prototype expanded to a full account-based platform (registration, login, persistent conversation history, admin panel) alongside the core screening research; one shared backend consumed by two thin client surfaces (web app, browser extension); a hosted LLM reached through a provider interface (Groq by default) lets the app run when deployed, without a local model install. See [../requirements/SPECIFICATION.md](../requirements/../requirements/SPECIFICATION.md) §1.3 for full justification and the accepted feasibility trade-off.
 
 ---
 
@@ -30,7 +30,7 @@ C4Context
 
     System(promptshield, "SentryPrompt4", "Screens student prompts for sensitive information before they reach an AI model, and warns/mitigates as needed")
 
-    System_Ext(ollama, "Ollama (Local LLM)", "Locally-hosted language model that generates responses to approved prompts")
+    System_Ext(ollama, "LLM Provider", "Hosted language model API (Groq by default; Gemini or local Ollama selectable) that classifies redacted prompts and answers approved ones")
     System_Ext(thirdparty, "Third-Party AI Platform", "e.g. ChatGPT / Claude / Gemini web interface — screened via the browser extension, not replaced by it")
 
     Rel(student, promptshield, "Types prompts into, reads warnings and responses from")
@@ -57,14 +57,14 @@ C4Container
         Container(webapp, "Web Chat Application", "React (Vite) + Tailwind CSS", "Self-contained chat interface; also hosts login, registration, profile, and conversation history screens. Responsive: same codebase serves desktop and mobile viewports.")
         Container(extension, "Browser Extension", "JavaScript, browser extension APIs", "Injects screening into existing AI platform interfaces (ChatGPT, Claude, etc.)")
         Container(adminui, "Admin Panel", "React (Vite) + Tailwind CSS", "Account-level management UI: view/suspend/reinstate users, view audit log. No access to conversation content.")
-        Container(api, "Backend API", "Python (FastAPI)", "Receives prompts and account requests, orchestrates screening and auth, forwards approved prompts to Ollama. FastAPI chosen for automatic OpenAPI/Swagger generation (feeds Increment 7) and a single-language backend alongside the Screening Service.")
+        Container(api, "Backend API", "Python (FastAPI)", "Receives prompts and account requests, orchestrates screening and auth, forwards approved prompts to the configured LLM provider. FastAPI chosen for automatic OpenAPI/Swagger generation (feeds Increment 7) and a single-language backend alongside the Screening Service.")
         Container(authsvc, "Auth Service", "Python module (FastAPI)", "Handles registration, email verification, login/session, password reset, and enforces the admin content-access boundary (NFR-013)")
         Container(screening, "NLP Screening Service", "Python", "Core research artifact: rule-based detector + context-aware detector, returns classification and flagged spans")
         ContainerDb(appdb, "Application Database", "SQLite", "Persists User, Session, Conversation, Message (encrypted), and AdminAuditLog records. SQLite chosen over PostgreSQL: no separate DB server to install/run, consistent with NFR-003 (local-only) and NFR-004 (single-command deployable).")
         ContainerDb(logstore, "Evaluation Log Store", "SQLite", "Stores anonymized, content-free flagged/unflagged prompt records for accuracy evaluation — deliberately separate from appdb (NFR-009)")
     }
 
-    System_Ext(ollama, "Ollama (Local LLM)", "Generates responses to approved prompts")
+    System_Ext(ollama, "LLM Provider", "Groq by default (Gemini / Ollama selectable); generates responses to approved prompts")
     System_Ext(thirdparty, "Third-Party AI Platform", "Existing AI chat interface in the browser")
     System_Ext(emailsvc, "Email Delivery", "SMTP/local mail relay for verification and password-reset emails")
 
@@ -82,7 +82,7 @@ C4Container
     Rel(authsvc, emailsvc, "Sends verification and reset emails via")
 
     Rel(api, screening, "Requests classification of prompt text", "internal call")
-    Rel(api, ollama, "Forwards approved prompt to", "HTTP (local)")
+    Rel(api, ollama, "Forwards approved prompt to", "HTTPS API")
     Rel(api, appdb, "Writes approved prompt/response as Message, within a Conversation")
     Rel(api, logstore, "Writes content-free screening result record to")
     Rel(api, webapp, "Returns response / account / history data to")
@@ -104,18 +104,18 @@ C4Component
     Container_Boundary(screening, "NLP Screening Service") {
         Component(preprocessor, "Text Preprocessor", "Python", "Tokenizes and normalizes incoming prompt text")
         Component(ruleengine, "Rule-Based Detector", "Regex / pattern rules", "Detects structured PII: ID numbers, phone numbers, bank details, emails")
-        Component(contextdetector, "Context-Aware Detector", "Pretrained NLP model or LLM-as-judge via Ollama", "Detects semantic categories: medical disclosures, institutional confidential content")
+        Component(contextdetector, "Context-Aware Detector", "LLM-as-judge via the configured LLM provider", "Detects semantic categories: medical disclosures, institutional confidential content")
         Component(aggregator, "Decision Aggregator", "Python", "Combines rule-based + context-aware results into a single classification with confidence and flagged spans")
         Component(explainer, "Explanation Generator", "Python (template-based)", "Produces plain-language explanation of why a span was flagged, shown to the student")
     }
 
     Container(api, "Backend API", "Python (FastAPI)", "Calls the screening service and returns results to the client")
-    System_Ext(ollama, "Ollama (Local LLM)", "Used by context-aware detector as an LLM-as-judge, and separately for approved-prompt responses")
+    System_Ext(ollama, "LLM Provider", "Groq by default; used by the context-aware detector as an LLM-as-judge (on redacted text), and separately for approved-prompt responses")
 
     Rel(api, preprocessor, "Sends raw prompt text to")
     Rel(preprocessor, ruleengine, "Passes normalized text to")
     Rel(preprocessor, contextdetector, "Passes normalized text to")
-    Rel(contextdetector, ollama, "May query for semantic classification", "local HTTP call")
+    Rel(contextdetector, ollama, "Sends redacted text for semantic classification", "HTTPS API")
     Rel(ruleengine, aggregator, "Sends pattern matches to")
     Rel(contextdetector, aggregator, "Sends semantic matches to")
     Rel(aggregator, explainer, "Sends flagged spans to")
@@ -135,12 +135,12 @@ C4Component
 | Client | Web Chat Application | Primary UI — chat, login/registration, profile, conversation history |
 | Client | Browser Extension | Screens prompts on third-party AI platforms in place |
 | Client | Admin Panel | Account-level management UI; no conversation-content access |
-| Service | Backend API | Orchestration, routing between clients, screening, auth, and Ollama |
+| Service | Backend API | Orchestration, routing between clients, screening, auth, and the LLM provider |
 | Service | Auth Service | Registration, verification, login/session, password reset |
 | Service | NLP Screening Service | Core research logic — detection, aggregation, explanation |
 | Data | Application Database | Persists User/Session/Conversation/Message (encrypted)/AdminAuditLog |
 | Data | Evaluation Log Store | Content-free, supports accuracy/false-positive evaluation — deliberately separate from Application Database |
-| External | Ollama | Local LLM — generates responses to approved prompts |
+| External | LLM Provider | Groq by default (Gemini or local Ollama selectable via `LLM_PROVIDER`) — classifies redacted prompts and generates responses to approved prompts |
 | External | Third-Party AI Platform | Existing tool the extension screens prompts for, without replacing it |
 | External | Email Delivery | Sends verification and password-reset emails |
 
@@ -154,6 +154,7 @@ Earlier drafts of this diagram deliberately left the implementation language/fra
 | Backend API, Auth Service | Python (FastAPI) | Matches the Screening Service's existing Python (NFR-005/006 context), avoiding a second language/runtime for a solo capstone. FastAPI generates OpenAPI/Swagger documentation automatically, directly feeding Increment 7's deliverable. |
 | Application Database | SQLite | No separate database server to install or run — consistent with NFR-003 (local-only) and NFR-004 (single-command deployable). PostgreSQL was considered and rejected as unnecessary operational complexity for a single-user local prototype. |
 | Evaluation Log Store | SQLite | Same reasoning as above; kept in a separate database file from the Application Database per NFR-009. |
+| LLM (context-aware detector + chat responses) | Groq API (`llama-3.1-8b-instant`) by default, behind a provider interface; Gemini and Ollama selectable with `LLM_PROVIDER` | Originally local Ollama, which forced every machine running the app (including a deployed server) to have Ollama installed. Groq's free tier is fast enough for NFR-010, needs no local install, and its terms prohibit training on API data, so it can receive real student prompts (after local redaction, NFR-008). Gemini is kept as an alternative for development and demos only, because its free tier may use data for training. Ollama is kept for free, fully offline evaluation runs. Implemented in `backend/app/llm/`. |
 | Browser Extension | JavaScript, browser extension APIs | Not a choice — Chrome/Firefox extensions require JavaScript; this is a platform constraint, not a stack preference. |
 
 **Honest trade-off, stated plainly:** choosing React over plain HTML+JS means the project now has two toolchains — a Python virtual environment for the backend/screening service, and an npm/Node build step (Vite) for the frontend, even though the backend itself has no Node.js dependency. NFR-004's "single-command or scripted setup" requirement now needs to document both steps (e.g. a top-level script that runs `npm install && npm run build` for the frontend and sets up the Python venv/dependencies for the backend), not assume one covers the other.
@@ -175,13 +176,14 @@ pip install -r backend/requirements.txt
 echo "== Frontend: npm dependencies + build =="
 cd frontend && npm install && npm run build && cd ..
 
-echo "== Ollama model check =="
-ollama list | grep -q llama3.2 || ollama pull llama3.2
+echo "== LLM provider config =="
+[ -f backend/.env ] || cp backend/.env.example backend/.env
+echo "Set GROQ_API_KEY in backend/.env (free key: console.groq.com)."
 
 echo "Setup complete. Run 'scripts/start.sh' to launch backend + frontend."
 ```
 
-**Design rationale:** a single shell script, not a Makefile or Docker Compose file — consistent with REPOSITORY_DESIGN.md §1's "Board note" reasoning elsewhere in this project (don't introduce more machinery than a solo prototype needs). Docker was considered and rejected for the same reason PostgreSQL was rejected above: real operational value for a multi-developer/multi-environment deployment, unnecessary complexity for a single-user local research prototype. The script is idempotent-ish by construction (`ollama pull` is a no-op if the model is already present) but is explicitly **not yet tested end-to-end** — that verification is implementation-phase work, stated honestly rather than assumed to work on the first real run.
+**Design rationale:** a single shell script, not a Makefile or Docker Compose file — consistent with REPOSITORY_DESIGN.md §1's "Board note" reasoning elsewhere in this project (don't introduce more machinery than a solo prototype needs). Docker was considered and rejected for the same reason PostgreSQL was rejected above: real operational value for a multi-developer/multi-environment deployment, unnecessary complexity for a single-user local research prototype. The script is idempotent-ish by construction (it only creates `backend/.env` if it doesn't already exist) but is explicitly **not yet tested end-to-end** — that verification is implementation-phase work, stated honestly rather than assumed to work on the first real run.
 
 ---
 
