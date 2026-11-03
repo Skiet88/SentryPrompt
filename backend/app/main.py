@@ -5,6 +5,9 @@ Run locally with:  uv run fastapi dev app/main.py
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,6 +21,7 @@ from app.config.rate_limiter import RateLimitPolicy, SlidingWindowRateLimiter
 from app.config.request_size_limit import RequestSizeLimitMiddleware
 from app.config.security_headers import SecurityHeadersMiddleware
 from app.config.settings import Settings
+from app.config.startup_checks import check_llm_model
 from app.exception.handlers import register_exception_handlers
 from app.repository.memory.evaluation_log_entry_repository import InMemoryEvaluationLogEntryRepository
 
@@ -31,8 +35,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
 
+    resolved_settings = settings
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        if not resolved_settings.is_production:
+            await check_llm_model(resolved_settings)
+        yield
+
     docs = settings.docs_enabled
     app = FastAPI(
+        lifespan=lifespan,
         title="SentryPrompt4 API",
         version=__version__,
         docs_url="/docs" if docs else None,

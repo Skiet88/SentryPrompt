@@ -54,3 +54,15 @@ def test_unreadable_reply_fails_closed():
 def test_rejects_non_positive_timeout():
     with pytest.raises(ValueError):
         ContextAwareDetector(FakeProvider(), PROMPT, ClassificationParser(), timeout_seconds=0)
+
+
+def test_provider_error_log_shows_safe_summary(caplog):
+    import logging
+
+    from app.llm.provider_errors import http_error
+
+    with caplog.at_level(logging.WARNING, logger="app.screening.context_aware_detector"):
+        result = detect(FakeProvider(error=http_error("groq", 404, "model_not_found")), "I take sertraline")
+    assert result.verdict is Verdict.UNAVAILABLE
+    assert "groq request failed: HTTP 404 model_not_found" in caplog.text
+    assert "sertraline" not in caplog.text

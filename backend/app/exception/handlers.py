@@ -11,6 +11,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.schemas.error_schema import ErrorResponse, FieldProblem, ValidationErrorResponse
+
 from .app_exceptions import RateLimitExceededError, SentryPromptError
 
 logger = logging.getLogger(__name__)
@@ -21,9 +23,8 @@ GENERIC_SERVER_ERROR = "The server could not complete the request."
 def _error_response(
     status_code: int, error_code: str, message: str, headers: dict[str, str] | None = None
 ) -> JSONResponse:
-    return JSONResponse(
-        status_code=status_code, content={"error": error_code, "message": message}, headers=headers
-    )
+    body = ErrorResponse(error=error_code, message=message)
+    return JSONResponse(status_code=status_code, content=body.model_dump(), headers=headers)
 
 
 async def _handle_app_error(request: Request, exc: Exception) -> JSONResponse:
@@ -42,17 +43,18 @@ async def _handle_validation_error(_: Request, exc: Exception) -> JSONResponse:
     """FastAPI's default 422 echoes the submitted values back. Prompts may
     contain personal data, so only the field and the problem are returned."""
     errors = exc.errors() if isinstance(exc, RequestValidationError) else []
-    details = [
-        {
-            "field": ".".join(str(part) for part in error.get("loc", ()) if part != "body"),
-            "problem": error.get("msg", ""),
-        }
-        for error in errors
-    ]
-    return JSONResponse(
-        status_code=422,
-        content={"error": "invalid_request", "message": "The request is not valid.", "details": details},
+    body = ValidationErrorResponse(
+        error="invalid_request",
+        message="The request is not valid.",
+        details=[
+            FieldProblem(
+                field=".".join(str(part) for part in error.get("loc", ()) if part != "body"),
+                problem=str(error.get("msg", "")),
+            )
+            for error in errors
+        ],
     )
+    return JSONResponse(status_code=422, content=body.model_dump())
 
 
 async def _handle_unexpected_error(_: Request, exc: Exception) -> JSONResponse:

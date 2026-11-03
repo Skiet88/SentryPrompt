@@ -4,11 +4,12 @@ from collections.abc import Sequence
 from typing import Any, Self
 
 from app.domain import MessageRole
-from app.exception import ConfigurationError, ProviderError
+from app.exception import ConfigurationError
 
 from ..chat_message import ChatMessage
 from ..config import LLMConfig
 from ..provider import LLMProvider
+from ..provider_errors import http_error, unexpected_error
 from ..registry import provider_registry
 
 
@@ -33,12 +34,16 @@ class GeminiProvider(LLMProvider):
         return cls(model=config.gemini_model, api_key=config.gemini_api_key)
 
     async def _generate(self, contents: Any, config: Any = None) -> str:
+        from google.genai import errors
+
         try:
             response = await self._client.aio.models.generate_content(
                 model=self.model, contents=contents, config=config
             )
+        except errors.APIError as exc:
+            raise http_error(self.name, exc.code, exc.status) from None
         except Exception as exc:
-            raise ProviderError(f"Gemini request failed: {exc}") from exc
+            raise unexpected_error(self.name, exc) from None
         return response.text or ""
 
     async def complete_json(self, system_prompt: str, user_text: str) -> str:

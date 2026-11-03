@@ -19,13 +19,13 @@ class FakeConfig:
     app_env: str = "development"
     llm_provider: str = "groq"
     groq_api_key: str = "test-key"
-    groq_model: str = "llama-3.1-8b-instant"
+    groq_model: str = "openai/gpt-oss-20b"
     gemini_api_key: str = "test-key"
     gemini_model: str = "gemini-flash-lite-latest"
     gemini_paid_tier: bool = False
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
-    context_detector_timeout_seconds: float = 1.5
+    context_detector_timeout_seconds: float = 3.0
 
     def with_(self, **changes) -> FakeConfig:
         return replace(self, **changes)

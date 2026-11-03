@@ -28,7 +28,7 @@ Chosen with the `LLM_PROVIDER` setting; switching needs no code changes.
 
 | `LLM_PROVIDER` | Default model | Cost | Use it for |
 |---|---|---|---|
-| `groq` (default) | `llama-3.1-8b-instant` | Free tier (~30 requests/min) | Everything, including deployment with real students |
+| `groq` (default) | `openai/gpt-oss-20b` | Free tier | Everything, including deployment with real students |
 | `gemini` | `gemini-flash-lite-latest` | Free tier | Development and demos with made-up data only* |
 | `ollama` | `llama3.2` | Free, local | Offline evaluation on a PC with Ollama installed |
 
@@ -91,6 +91,24 @@ curl -s -X POST http://localhost:8000/api/prompts/screen \
 
 Or use the interactive docs at http://localhost:8000/docs. The endpoint is
 not served in production until login is added (backend plan, step 6).
+
+## Troubleshooting
+
+On startup (development only) the log says which model is used and whether
+the provider still offers it, e.g.
+`Screening: using groq model openai/gpt-oss-20b (available)`.
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `contextAwareVerdict: "UNAVAILABLE"` and log `HTTP 404 model_not_found` | The provider retired the model | Set a current model in `.env` (`GROQ_MODEL`); list models in the Groq console |
+| Log `HTTP 401 invalid_api_key` | Wrong or deleted key | Create a new key; put it in `.env` |
+| Log `timed out after …s` | Model slower than `CONTEXT_DETECTOR_TIMEOUT_SECONDS` | Raise the timeout slightly, or use a faster model |
+| `.env` change has no effect | Settings are read once at startup | Restart the server (Ctrl+C, then start again) |
+| A setting has the wrong value | The same name appears twice in `.env`; the **last** one wins | Keep each setting once |
+| `{"error": "configuration_error"}` | No API key set | Add the key to `.env` and restart |
+
+A failed context check is never treated as clean: the prompt is marked
+`UNAVAILABLE`, the student is warned, and rule-based flags still appear.
 
 ## Checks
 
