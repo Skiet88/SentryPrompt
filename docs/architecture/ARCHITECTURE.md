@@ -54,19 +54,19 @@ C4Container
     Person(admin, "System Administrator", "Manages accounts, does not access conversation content")
 
     System_Boundary(promptshield, "SentryPrompt4") {
-        Container(webapp, "Web Chat Application", "React (Vite) + Tailwind CSS", "Self-contained chat interface; also hosts login, registration, profile, and conversation history screens. Responsive: same codebase serves desktop and mobile viewports.")
-        Container(extension, "Browser Extension", "JavaScript, browser extension APIs", "Injects screening into existing AI platform interfaces (ChatGPT, Claude, etc.)")
-        Container(adminui, "Admin Panel", "React (Vite) + Tailwind CSS", "Account-level management UI: view/suspend/reinstate users, view audit log. No access to conversation content.")
+        Container(webapp, "Web Chat Application", "React + TypeScript (Vite), Tailwind, shadcn/ui", "Self-contained chat interface; also hosts login, registration, profile, and conversation history screens. Responsive: same codebase serves desktop and mobile viewports.")
+        Container(extension, "Browser Extension", "TypeScript, browser extension APIs", "Injects screening into existing AI platform interfaces (ChatGPT, Claude, etc.)")
+        Container(adminui, "Admin Panel", "React + TypeScript (Vite), Tailwind, shadcn/ui", "Account-level management UI: view/suspend/reinstate users, view audit log. No access to conversation content.")
         Container(api, "Backend API", "Python (FastAPI)", "Receives prompts and account requests, orchestrates screening and auth, forwards approved prompts to the configured LLM provider. FastAPI chosen for automatic OpenAPI/Swagger generation (feeds Increment 7) and a single-language backend alongside the Screening Service.")
-        Container(authsvc, "Auth Service", "Python module (FastAPI)", "Handles registration, email verification, login/session, password reset, and enforces the admin content-access boundary (NFR-013)")
+        Container(authsvc, "Auth Service", "Supabase Auth (managed) + FastAPI token check", "Supabase Auth handles registration, email verification, login/session and password reset; the backend verifies its tokens and enforces verified-email, suspension and admin rules (NFR-013)")
         Container(screening, "NLP Screening Service", "Python", "Core research artifact: rule-based detector + context-aware detector, returns classification and flagged spans")
-        ContainerDb(appdb, "Application Database", "SQLite", "Persists User, Session, Conversation, Message (encrypted), and AdminAuditLog records. SQLite chosen over PostgreSQL: no separate DB server to install/run, consistent with NFR-003 (local-only) and NFR-004 (single-command deployable).")
-        ContainerDb(logstore, "Evaluation Log Store", "SQLite", "Stores anonymized, content-free flagged/unflagged prompt records for accuracy evaluation — deliberately separate from appdb (NFR-009)")
+        ContainerDb(appdb, "Application Database", "PostgreSQL (Supabase)", "Persists user profiles, Conversation, Message (encrypted) and AdminAuditLog records; accounts, sessions and email tokens live in Supabase Auth's own schema. Managed, with an online dashboard.")
+        ContainerDb(logstore, "Evaluation Log Store", "PostgreSQL (Supabase), separate evaluation schema", "Stores anonymized, content-free flagged/unflagged prompt records for accuracy evaluation — deliberately separate from appdb (NFR-009)")
     }
 
     System_Ext(ollama, "LLM Provider", "Groq by default (Gemini / Ollama selectable); generates responses to approved prompts")
     System_Ext(thirdparty, "Third-Party AI Platform", "Existing AI chat interface in the browser")
-    System_Ext(emailsvc, "Email Delivery", "SMTP/local mail relay for verification and password-reset emails")
+    System_Ext(emailsvc, "Email Delivery", "SMTP provider (e.g. Resend) used by Supabase Auth for verification and password-reset emails")
 
     Rel(student, webapp, "Uses — chat, account, and history features")
     Rel(student, extension, "Uses, while browsing")
@@ -77,8 +77,9 @@ C4Container
     Rel(extension, api, "Sends prompt for screening", "HTTPS/JSON")
     Rel(adminui, api, "Sends account management requests", "HTTPS/JSON")
 
-    Rel(api, authsvc, "Delegates registration/login/session/reset to", "internal call")
-    Rel(authsvc, appdb, "Reads/writes User, Session, token records")
+    Rel(webapp, authsvc, "Signs up, logs in, resets password via", "supabase-js / HTTPS")
+    Rel(api, authsvc, "Verifies access tokens and account status with")
+    Rel(authsvc, appdb, "Owns account, session and token records (auth schema)")
     Rel(authsvc, emailsvc, "Sends verification and reset emails via")
 
     Rel(api, screening, "Requests classification of prompt text", "internal call")
@@ -144,46 +145,46 @@ C4Component
 | External | Third-Party AI Platform | Existing tool the extension screens prompts for, without replacing it |
 | External | Email Delivery | Sends verification and password-reset emails |
 
-## Tech Stack Decision (resolved — previously left open as either/or)
+## Tech Stack Decision (revised for deployment)
 
-Earlier drafts of this diagram deliberately left the implementation language/framework open (e.g. "React / HTML+JS", "Node.js / Python", "PostgreSQL / SQLite") until Increments 6/7 forced the decision. It is now resolved:
+**Revision note:** the first version of this stack (React/Vite, FastAPI, SQLite, local Ollama, no Docker) was chosen for a project that would only ever run on one development machine. Once deployment became a goal, three of those choices stopped fitting: a SQLite file is lost when a hosting platform restarts or redeploys the server, a local Ollama model requires every server to have Ollama installed, and authentication built from scratch is a large amount of security-sensitive code for a solo project. The stack below replaces them. The research core (two detectors in parallel, compared on the test set) is unaffected.
 
 | Layer | Choice | Why |
 |---|---|---|
-| Web Chat Application, Admin Panel | React (Vite) + Tailwind CSS | One responsive codebase for both desktop and mobile viewports, per explicit preference — avoids maintaining separate mobile/desktop UIs. Tailwind's mobile-first breakpoints keep this achievable without hand-written media queries per component. |
-| Backend API, Auth Service | Python (FastAPI) | Matches the Screening Service's existing Python (NFR-005/006 context), avoiding a second language/runtime for a solo capstone. FastAPI generates OpenAPI/Swagger documentation automatically, directly feeding Increment 7's deliverable. |
-| Application Database | SQLite | No separate database server to install or run — consistent with NFR-003 (local-only) and NFR-004 (single-command deployable). PostgreSQL was considered and rejected as unnecessary operational complexity for a single-user local prototype. |
-| Evaluation Log Store | SQLite | Same reasoning as above; kept in a separate database file from the Application Database per NFR-009. |
-| LLM (context-aware detector + chat responses) | Groq API (`llama-3.1-8b-instant`) by default, behind a provider interface; Gemini and Ollama selectable with `LLM_PROVIDER` | Originally local Ollama, which forced every machine running the app (including a deployed server) to have Ollama installed. Groq's free tier is fast enough for NFR-010, needs no local install, and its terms prohibit training on API data, so it can receive real student prompts (after local redaction, NFR-008). Gemini is kept as an alternative for development and demos only, because its free tier may use data for training. Ollama is kept for free, fully offline evaluation runs. Implemented in `backend/app/llm/`. |
-| Browser Extension | JavaScript, browser extension APIs | Not a choice — Chrome/Firefox extensions require JavaScript; this is a platform constraint, not a stack preference. |
+| Web Chat Application, Admin Panel | React + **TypeScript** (Vite), Tailwind CSS, **shadcn/ui** components | One responsive codebase for desktop and mobile. TypeScript catches errors before runtime; shadcn/ui gives accessible, ready-made components (forms, dialogs, tables) instead of hand-building them. Builds to static files that free static hosts serve. |
+| Backend API, Screening Service | Python (FastAPI), async | Same language as the screening and evaluation code. Async lets the rule-based and context-aware detectors run concurrently (FR-004) without blocking other requests. FastAPI generates OpenAPI/Swagger documentation automatically (Increment 7). Tooling: `uv` for dependencies, Pydantic for validation, SQLAlchemy 2 + Alembic for database access and migrations. |
+| Application Database | **PostgreSQL, hosted on Supabase** | Relational, which matches the 14-entity ERD, its 3NF normalisation and the account-deletion cascade (NFR-014) directly. Supabase provides an online dashboard (table browser, SQL editor, logs) and a free tier (2 projects, 500 MB each) that covers this project. Because it is standard PostgreSQL, the data can move to any other Postgres host without code changes. *Replaces SQLite (local file, lost on redeploy) — see revision note.* |
+| Evaluation Log Store | Same Supabase Postgres instance, separate `evaluation` schema | Still kept apart from application data (NFR-009): separate schema, no foreign keys to user tables, content-free by design. |
+| Authentication | **Supabase Auth**, verified by the FastAPI backend | Handles registration, email verification, login, logout, password reset and password hashing (bcrypt). The frontend signs in with `supabase-js`; the backend checks the resulting token on every request and applies its own rules (verified email, account not suspended, admin role). See AUTH_DESIGN.md §0. *Replaces a custom-built auth service.* |
+| Email delivery | Supabase Auth emails, sent through a custom SMTP provider (e.g. Resend) for real users | Supabase's built-in email sender is only for testing (heavily rate-limited), so a free-tier SMTP provider is configured before real students sign up. |
+| LLM | Groq API by default (`llama-3.1-8b-instant`), behind a provider interface; Gemini and Ollama selectable with `LLM_PROVIDER` | No local install needed, fast enough for NFR-010, and its terms prohibit training on API data, so it can receive real student prompts after local redaction (NFR-008). Gemini is for development and demos only (its free tier may train on data); Ollama is kept for offline evaluation. Implemented in `backend/app/llm/`. |
+| Browser Extension | TypeScript, browser extension APIs | Chrome/Firefox extensions require JavaScript (TypeScript compiles to it); a platform constraint, not a stack preference. |
+| Hosting (at deployment) | Frontend on a free static host (e.g. Vercel, Netlify, Cloudflare Pages); backend as a Docker container on a platform such as Render, Railway or Fly.io | Exact hosts are chosen at deployment time, after checking current free tiers. The `Dockerfile` keeps the backend portable between them. |
+| Secrets | `.env` locally (never committed); the host's secret settings in deployment | Holds the Supabase keys, database URL, Groq key and the message-encryption key (NFR-011). |
 
-**Honest trade-off, stated plainly:** choosing React over plain HTML+JS means the project now has two toolchains — a Python virtual environment for the backend/screening service, and an npm/Node build step (Vite) for the frontend, even though the backend itself has no Node.js dependency. NFR-004's "single-command or scripted setup" requirement now needs to document both steps (e.g. a top-level script that runs `npm install && npm run build` for the frontend and sets up the Python venv/dependencies for the backend), not assume one covers the other.
+### Setup & Deployment (NFR-004)
 
-### Setup Script Design (NFR-004 — closing the previously-named gap)
-
-PROJECT_BACKLOG.md's board note flagged this as having "no design artefact at all yet." A minimal one is specified here — enough to satisfy "documented single-command or scripted setup" at design phase, without pretending a fully-tested installer exists before implementation:
+**Local development** (documented in `backend/README.md` and, later, `frontend/README.md`):
 
 ```bash
-#!/usr/bin/env bash
-# setup.sh — single documented entry point for NFR-004
-set -e
+# Backend
+cd backend
+uv sync                       # installs Python dependencies
+cp .env.example .env          # add Supabase URL/keys, DATABASE_URL, GROQ_API_KEY
+uv run alembic upgrade head   # creates/updates the database tables
+uv run fastapi dev app/main.py
 
-echo "== Backend: Python venv + dependencies =="
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-
-echo "== Frontend: npm dependencies + build =="
-cd frontend && npm install && npm run build && cd ..
-
-echo "== LLM provider config =="
-[ -f backend/.env ] || cp backend/.env.example backend/.env
-echo "Set GROQ_API_KEY in backend/.env (free key: console.groq.com)."
-
-echo "Setup complete. Run 'scripts/start.sh' to launch backend + frontend."
+# Frontend
+cd frontend
+npm install
+npm run dev
 ```
 
-**Design rationale:** a single shell script, not a Makefile or Docker Compose file — consistent with REPOSITORY_DESIGN.md §1's "Board note" reasoning elsewhere in this project (don't introduce more machinery than a solo prototype needs). Docker was considered and rejected for the same reason PostgreSQL was rejected above: real operational value for a multi-developer/multi-environment deployment, unnecessary complexity for a single-user local research prototype. The script is idempotent-ish by construction (it only creates `backend/.env` if it doesn't already exist) but is explicitly **not yet tested end-to-end** — that verification is implementation-phase work, stated honestly rather than assumed to work on the first real run.
+Development uses its own Supabase project (the free tier allows two: one for development, one for the deployed app), so nothing needs to be installed locally except Python and Node.js.
+
+**Deployment:** the backend is built from a single `Dockerfile` and run on the chosen host with the same environment variables set as secrets; the frontend is built with `npm run build` and the static output uploaded to the static host. Database changes are applied with `alembic upgrade head` as part of each deployment.
+
+**Revision note:** the earlier design rejected Docker as unnecessary for a single-machine prototype. For deployment it is the most portable option, since nearly every hosting platform runs a container, so it is now part of the design. Neither the local setup nor the deployment has been tested end to end yet; that is build-phase work.
 
 ---
 

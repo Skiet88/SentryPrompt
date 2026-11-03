@@ -41,15 +41,15 @@
 | **NFR-001** — plain-language explanations | Explanation Generator component; UC3 spec | Qualitative — no dedicated automated test case, verified by design/content review instead (see TEST_CASES.md §3 coverage notes) |
 | **NFR-002** — ≤1 extra click when clean | UI_MOCKUPS.md flag dialog flow | Verified by prototype walkthrough, not an automated test |
 | **NFR-003** — provider selectable by configuration, deployable without Ollama | `backend/app/llm/factory.py` (`LLM_PROVIDER`), ../architecture/ARCHITECTURE.md Tech Stack | Verified by `backend/tests/test_llm.py` (provider selection tests) |
-| **NFR-004** — single-command/documented setup | `setup.sh` design specified in ../architecture/ARCHITECTURE.md's "Setup Script Design" subsection | A single shell script chosen over Docker/Make deliberately — not yet end-to-end tested, stated honestly rather than assumed |
+| **NFR-004** — documented local setup and container-based deployment | ../architecture/ARCHITECTURE.md "Setup & Deployment" (local commands, `Dockerfile`, static frontend build) | Not yet tested end to end; build-phase work, stated rather than assumed |
 | **NFR-005** — configurable rule patterns | `RulePattern` entity, separate from detection logic code | Same artefact as FR-002 |
 | **NFR-006** — unit test coverage of the five taxonomy categories | TEST_CASES.md's Requirement Coverage Matrix (§3) | Confirms all categories have at least one dedicated test case |
-| **NFR-007** — screening service independently scalable | NLP Screening Service as its own Container (../architecture/ARCHITECTURE.md), separate from the Backend API | Architecturally separable even though NFR-007 explicitly targets single-user load for this prototype |
+| **NFR-007** — screening service independently scalable | NLP Screening Service as its own Container (../architecture/ARCHITECTURE.md), separate from the Backend API | Targets a small multi-user pilot; Supabase and Groq free-tier limits are the first ceilings (../evaluation/EVALUATION_OF_DESIGN.md §9.2) |
 | **NFR-008** — prompt data minimised and only sent to no-training providers | `backend/app/screening/redaction.py` (local redaction), privacy check in `backend/app/llm/factory.py`, ../evaluation/MODEL_ARCHITECTURE.md §1 | Verified by TC-NF-002 and `backend/tests/test_llm.py` (redaction and production-guard tests) |
 | **NFR-009** — evaluation log is content-free | `EvaluationLogEntry` schema (../architecture/DOMAIN_MODEL.md); no `rawText` field exists on the entity | Verified by TC-009; enforced structurally, per FR-011 |
 | **NFR-010** — screening completes within 2 seconds | `ScreeningService`'s parallel `asyncio.gather()` design | **Not yet empirically verified** — MODEL_../architecture/ARCHITECTURE.md §4 explicitly flags this as unbenchmarked; TC-NF-001 exists but has not been run |
 | **NFR-011** — message content encrypted at rest | `MessageRepository.save()` encrypts before storage (../architecture/REPOSITORY_DESIGN.md §3.2) | Enforced inside the repository, not the service layer — cannot be bypassed by a careless caller |
-| **NFR-012** — passwords hashed, never plaintext | `AuthService` (bcrypt/Argon2, per ../architecture/AUTH_DESIGN.md) | — |
+| **NFR-012** — passwords hashed, never plaintext | Supabase Auth (bcrypt), ../architecture/AUTH_DESIGN.md §0 | The application database never stores passwords or hashes |
 | **NFR-013** — admin has no conversation-content access | `AdminService` has no `MessageRepository`/`ConversationRepository` dependency at all (../architecture/SERVICE_LAYER.md §1) | Structural, not a policy comment — the class cannot call what it was never given |
 | **NFR-014** — right-to-erasure account deletion | Same artefact as FR-020 (../architecture/AUTH_DESIGN.md §8.2) | POPIA compliance framing stated explicitly in SPECIFICATION.md §1.3; precedence over `AdminAuditLog` retention (FR-022) stated explicitly in §8.2, not left ambiguous |
 
@@ -59,7 +59,7 @@
 
 Building this matrix exposed two things worth stating plainly rather than smoothing over:
 
-1. **NFR-004 now has a design artefact** — a minimal `setup.sh` script is specified in ../architecture/ARCHITECTURE.md's "Setup Script Design" subsection, closing what was previously a named gap with no artefact at all. It is explicitly not yet end-to-end tested — that remains implementation-phase work, stated honestly rather than assumed.
+1. **NFR-004 now has a design artefact** — local setup commands and a container-based deployment path are specified in ../architecture/ARCHITECTURE.md's "Setup & Deployment" subsection.
 2. **NFR-010's performance claim is architecturally plausible but empirically unverified** — the design supports it, but no real measurement exists yet. This should be reported as-is in the Design Phase Template's evaluation section (§9), not presented as already confirmed.
 
 Both are carried forward into ../evaluation/EVALUATION_OF_DESIGN.md's risk table rather than fixed here — this document's job is to expose gaps accurately, not to quietly patch over them by inventing an artefact that doesn't exist.

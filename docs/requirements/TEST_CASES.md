@@ -64,7 +64,7 @@ A test suite claiming to be complete has to prove it, not just assert it. This t
 
 - **Why "Actual Result" and "Status" are left pending:** filling these in now, before any code exists, would mean fabricating test results — a fabrication risk this board explicitly guards against. These columns are completed during/after implementation, not during design.
 - **TC-NF-002 scope note:** written narrowly on purpose. Testing "no external transmission" broadly would contradict the extension's actual function (UC2 legitimately sends approved prompts to third-party platforms). The test is scoped to validate only the part of NFR-008 that's a hard constraint — the screening/inference path.
-- **Gap acknowledged, not silently missing:** no load/concurrency test exists, since NFR-007 (scalability) explicitly targets single-user local load for this prototype. Adding one here would test something outside the stated scope.
+- **Gap acknowledged, not silently missing:** no load/concurrency test exists, since NFR-007 (scalability) explicitly targets a small multi-user pilot for this prototype. Adding one here would test something outside the stated scope.
 
 ## Links
 - [USE_CASES.md](USE_CASES.md)
