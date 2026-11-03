@@ -44,6 +44,26 @@ Before anything is sent to the provider, values found by the rule-based
 detector (ID, card and account numbers, phone numbers, emails, addresses) are
 replaced with placeholders such as `[REDACTED_SA_ID]`.
 
+## Detection rules (NFR-005)
+
+The rule-based categories and their regex patterns are data, in
+`app/screening/rules/detection_categories.json`. Categories are listed in
+priority order: when two matches overlap, the category listed first wins. Each
+category's `description` is the plain-language explanation shown to students
+(FR-006), so write it for someone with no legal or privacy background.
+
+- **Add a pattern:** add an entry to a category's `patterns` list (`id`,
+  `regex`, `description`, optional `validator`).
+- **Add a validator** (an extra check on a match, like `luhn`): add a class in
+  `app/screening/rules/match_validators.py` decorated with
+  `@validator_registry.register`.
+- **Every regex must be safe from catastrophic backtracking (ReDoS):** bound
+  repetitions (`{0,3}`, not `*`) wherever they can repeat. The test
+  `tests/screening/rules/test_redos.py` times every pattern on attack input and
+  fails the build if one is too slow.
+- After changing rules, run `python run_rule_eval.py` from the repository root
+  and update the published results if they change.
+
 ## Setup
 
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).

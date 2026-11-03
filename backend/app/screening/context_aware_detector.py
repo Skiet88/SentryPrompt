@@ -9,11 +9,13 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from app.domain import DetectorSource
 from app.exception import ProviderError
 from app.llm import LLMProvider
 
 from .classification_parser import ClassificationParser
 from .detection import ContextDetectionResult
+from .detector import Detector
 from .prompt_template import PromptTemplate
 
 logger = logging.getLogger(__name__)
@@ -21,7 +23,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT_SECONDS = 1.5  # leaves room within NFR-010's 2-second budget
 
 
-class ContextAwareDetector:
+class ContextAwareDetector(Detector):
+    source = DetectorSource.CONTEXT
+
     def __init__(
         self,
         provider: LLMProvider,

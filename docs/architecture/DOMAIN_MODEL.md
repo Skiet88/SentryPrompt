@@ -306,7 +306,7 @@ Entities are immutable data, so methods that only *read* an entity's own fields 
 | `ScreeningResult.aggregate()` | `ScreeningResult.aggregate()`; the factory always computes the aggregated verdict |
 | `ScreeningResult.isFlagged()` | `ScreeningResult.is_flagged` |
 | `FlaggedSpan.getExplanation()` | `ExplanationGenerator` in the screening layer (step 3) |
-| `RulePattern.matches(text)` | `RulePattern.matches()` |
+| `RulePattern.matches(text)` | `RulePattern.matches()`; `RulePattern.finditer()` added so the detector can locate every match |
 | `TestSetEntry.runThroughDetectors()` | The evaluation harness (`run_rule_eval.py`, `run_context_eval.py`) |
 | `User.register()`, `User.authenticate()` | Supabase Auth (AUTH_DESIGN.md §0) |
 | `User.deleteAccount()` | Account deletion service (AUTH_DESIGN.md §8.2) |

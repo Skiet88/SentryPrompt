@@ -51,6 +51,8 @@ Architecture (P5) was drafted early, out of sequence, because Assignment 3's bri
 
 ## Open Follow-ups (tracked, not hidden)
 
+- **Docker:** the backend `Dockerfile` (ARCHITECTURE.md, Setup & Deployment) is added only once the application runs end to end, so that any container problem is clearly separate from application problems during development.
+
 - **Increment 2 extension:** USE_CASES.md and TEST_CASES.md still cover only FR-001 to FR-012. Use cases and test cases for FR-013 to FR-022 have not been written yet.
 - **Increment 9:** the UI prototype (`src/lib/screening.ts` etc.) lives outside this repository. Its `RULE_PATTERNS` must be updated to match the Revision 2 rules in `run_rule_eval.py` (overlap priority, Luhn check, `bank_account` rule).
 - **Increment 8 / 16:** get a free Groq API key, run `python run_context_eval.py`, and copy the context-aware and aggregated results into ../evaluation/EVALUATION_HARNESS_DESIGN.md §3.
