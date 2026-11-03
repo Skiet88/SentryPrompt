@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends
 
 from app.config.dependencies import enforce_screening_rate_limit, get_screening_service
 from app.config.lazy import Provider
+from app.schemas.error_schema import ERROR_RESPONSES
 from app.schemas.screening_schema import ScreenPromptRequest, ScreenPromptResponse
 from app.service.screening.i_screening_service import IScreeningService
 
@@ -20,6 +21,7 @@ router = APIRouter(prefix="/api/prompts", tags=["screening"])
 @router.post(
     "/screen",
     response_model=ScreenPromptResponse,
+    responses=ERROR_RESPONSES,
     dependencies=[Depends(enforce_screening_rate_limit)],
 )
 async def screen_prompt(

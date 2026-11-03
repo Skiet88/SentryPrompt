@@ -27,13 +27,16 @@ class Settings(BaseSettings):
 
     llm_provider: str = "groq"
     groq_api_key: str = ""
-    groq_model: str = "llama-3.1-8b-instant"
+    groq_model: str = "openai/gpt-oss-20b"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-flash-lite-latest"
     gemini_paid_tier: bool = False
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
-    context_detector_timeout_seconds: float = Field(default=1.5, gt=0, le=10)
+    # Worst case for the context check. NFR-010 targets 2 s for the whole
+    # screening; typical responses are well under that (measured by
+    # run_context_eval.py), and a slow answer fails closed rather than passing.
+    context_detector_timeout_seconds: float = Field(default=3.0, gt=0, le=10)
 
     # Screening calls a rate-limited LLM (Groq free tier: ~30 requests/min per
     # account), so limit per client and in total (SECURITY_RULES.md §4).

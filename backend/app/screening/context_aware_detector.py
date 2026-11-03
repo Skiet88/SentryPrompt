@@ -20,7 +20,7 @@ from .prompt_template import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TIMEOUT_SECONDS = 1.5  # leaves room within NFR-010's 2-second budget
+DEFAULT_TIMEOUT_SECONDS = 3.0  # worst case; typical responses are much faster (NFR-010)
 
 
 class ContextAwareDetector(Detector):
@@ -49,10 +49,9 @@ class ContextAwareDetector(Detector):
             logger.warning("Context detector timed out after %.1fs (%s)", self._timeout, self._provider.name)
             return self._unavailable("timeout")
         except ProviderError as exc:
-            # Log the error type only: provider messages could echo request data.
-            logger.warning(
-                "Context detector provider error (%s): %s", self._provider.name, type(exc).__name__
-            )
+            # ProviderError messages are safe summaries (status and error code
+            # only), e.g. "groq request failed: HTTP 404 model_not_found".
+            logger.warning("Context detector unavailable: %s", exc)
             return self._unavailable("provider_error")
 
         return self._parser.parse(

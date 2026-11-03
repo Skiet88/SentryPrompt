@@ -32,7 +32,25 @@ class RateLimitExceededError(SentryPromptError):
 
 
 class ProviderError(SentryPromptError):
-    """The LLM provider could not be reached or returned an error."""
+    """The LLM provider could not be reached or returned an error.
+
+    Carries only a safe summary: provider name, the provider's HTTP status and
+    a machine-readable error code. Never the provider's message text, which can
+    echo request content (e.g. a failed JSON generation includes model output).
+    """
 
     status_code = 502
     error_code = "llm_provider_error"
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        provider: str | None = None,
+        provider_status: int | None = None,
+        provider_error_code: str | None = None,
+    ):
+        super().__init__(message)
+        self.provider = provider
+        self.provider_status = provider_status
+        self.provider_error_code = provider_error_code

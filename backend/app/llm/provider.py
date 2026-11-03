@@ -34,3 +34,8 @@ class LLMProvider(ABC):
     @abstractmethod
     async def chat(self, messages: Sequence[ChatMessage]) -> str:
         """Return the model's reply to a conversation."""
+
+    async def model_is_available(self) -> bool | None:
+        """Whether the configured model is offered by the provider, or None if
+        this provider can't tell. Used by the startup check."""
+        return None

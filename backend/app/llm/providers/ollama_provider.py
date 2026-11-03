@@ -5,11 +5,10 @@ from typing import Self
 
 import httpx
 
-from app.exception import ProviderError
-
 from ..chat_message import ChatMessage
 from ..config import LLMConfig
 from ..provider import LLMProvider
+from ..provider_errors import http_error, network_error
 from ..registry import provider_registry
 
 
@@ -22,7 +21,9 @@ class OllamaProvider(LLMProvider):
 
     def __init__(self, model: str, base_url: str):
         super().__init__(model)
-        self._url = base_url.rstrip("/") + "/api/chat"
+        base = base_url.rstrip("/")
+        self._url = base + "/api/chat"
+        self._tags_url = base + "/api/tags"
 
     @classmethod
     def from_config(cls, config: LLMConfig) -> Self:
@@ -36,11 +37,31 @@ class OllamaProvider(LLMProvider):
                 )
             response.raise_for_status()
             content = response.json()["message"]["content"]
-        except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
-            raise ProviderError(f"Ollama request failed: {exc}") from exc
+        except httpx.HTTPStatusError as exc:
+            raise http_error(self.name, exc.response.status_code) from None
+        except httpx.TimeoutException:
+            raise network_error(self.name, "timeout") from None
+        except httpx.HTTPError:
+            raise network_error(self.name, "connection_error") from None
+        except (KeyError, TypeError, ValueError):
+            raise network_error(self.name, "unreadable_response") from None
         if not isinstance(content, str):
-            raise ProviderError("Ollama returned a non-text reply")
+            raise network_error(self.name, "unreadable_response")
         return content
+
+    async def model_is_available(self) -> bool | None:
+        """Ollama lists local models as "name:tag"; "llama3.2" means "llama3.2:latest"."""
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(self._tags_url)
+            response.raise_for_status()
+            names = {m["name"] for m in response.json()["models"]}
+        except httpx.HTTPError:
+            raise network_error(self.name, "connection_error") from None
+        except (KeyError, TypeError, ValueError):
+            raise network_error(self.name, "unreadable_response") from None
+        wanted = self.model if ":" in self.model else f"{self.model}:latest"
+        return wanted in names
 
     async def complete_json(self, system_prompt: str, user_text: str) -> str:
         return await self._post(

@@ -193,3 +193,13 @@ def test_invalid_input_is_rejected_before_the_service_is_built():
     response = client.post(URL, json={"text": "hi", "role": "admin"})
     assert response.status_code == 422
     assert response.json()["error"] == "invalid_request"
+
+
+def test_docs_describe_the_real_error_format():
+    schema = make_client().get("/openapi.json").json()
+    responses = schema["paths"]["/api/prompts/screen"]["post"]["responses"]
+    assert responses["422"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "ValidationErrorResponse"
+    )
+    assert {"400", "413", "429", "500"} <= set(responses)
+    assert "HTTPValidationError" not in schema["components"]["schemas"]

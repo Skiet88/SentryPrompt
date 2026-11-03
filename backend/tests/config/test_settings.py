@@ -18,9 +18,9 @@ def test_defaults(monkeypatch):
     assert (settings.app_env, settings.llm_provider, settings.groq_model) == (
         "development",
         "groq",
-        "llama-3.1-8b-instant",
+        "openai/gpt-oss-20b",
     )
-    assert settings.context_detector_timeout_seconds == 1.5
+    assert settings.context_detector_timeout_seconds == 3.0
     assert settings.docs_enabled and not settings.is_production
 
 
