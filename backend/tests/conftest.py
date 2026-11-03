@@ -25,6 +25,7 @@ class FakeConfig:
     gemini_paid_tier: bool = False
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
+    context_detector_timeout_seconds: float = 1.5
 
     def with_(self, **changes) -> FakeConfig:
         return replace(self, **changes)

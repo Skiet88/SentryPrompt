@@ -23,8 +23,10 @@ stateDiagram-v2
     Validating --> Screening: Non-empty input accepted
 
     state Screening {
-        [*] --> RunningDetectors
-        RunningDetectors --> BothReturned: rule-based AND context-aware\ncomplete (FR-004, run in parallel)
+        [*] --> RuleDetection
+        RuleDetection --> Redacting: rule-based detector\ncompletes (local)
+        Redacting --> ContextDetection: findings redacted (NFR-008)
+        ContextDetection --> BothReturned: context-aware detector completes,\nor times out / fails (UNAVAILABLE, NFR-015)
         BothReturned --> Aggregating
         Aggregating --> [*]
     }
@@ -53,7 +55,7 @@ stateDiagram-v2
 ```
 
 **Design notes:**
-- The `Screening` composite state has no branch point of its own — both detectors always run to completion before aggregation, enforcing FR-004 (parallel, not fallback) at the state-machine level, not just in prose.
+- The `Screening` composite state has no branch point of its own — both detectors always run before aggregation, enforcing FR-004 (both always run, never a fallback) at the state-machine level, not just in prose. The context-aware detector runs after redaction so it never sees rule-detected values (NFR-008).
 - `EditRequested` loops back to `Draft`, not directly to `Screening` — this makes explicit that an edited prompt is a *new* submission for state-machine purposes, matching UC4's postcondition ("re-screened from scratch").
 - `Overridden` and `Clean` both terminate at `Forwarded`, but they are logged as distinguishable events (NFR-009) — the state diagram intentionally keeps them as separate incoming transitions into the same state, rather than merging the arrows, to preserve that distinction visually.
 

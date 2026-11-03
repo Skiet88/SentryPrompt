@@ -38,6 +38,11 @@ class DetectionResult(Protocol):
     @property
     def verdict(self) -> Verdict: ...
 
+    @property
+    def completed(self) -> bool:
+        """False when the detector could not finish (verdict UNAVAILABLE)."""
+        ...
+
 
 @dataclass(frozen=True, slots=True)
 class RuleDetectionResult:
@@ -45,6 +50,10 @@ class RuleDetectionResult:
     completes, so its verdict is never UNAVAILABLE."""
 
     spans: tuple[DetectedSpan, ...] = ()
+
+    @property
+    def completed(self) -> bool:
+        return True
 
     @property
     def verdict(self) -> Verdict:

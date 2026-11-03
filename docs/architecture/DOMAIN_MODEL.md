@@ -302,10 +302,10 @@ Entities are immutable data, so methods that only *read* an entity's own fields 
 | Method in the class diagram | Implemented as |
 |---|---|
 | `Prompt.validate()` | `build_prompt()` rejects empty or over-long text (FR-001) |
-| `Prompt.submit()` | `ScreeningService` (step 3) |
+| `Prompt.submit()` | `ScreeningService.screen()` |
 | `ScreeningResult.aggregate()` | `ScreeningResult.aggregate()`; the factory always computes the aggregated verdict |
 | `ScreeningResult.isFlagged()` | `ScreeningResult.is_flagged` |
-| `FlaggedSpan.getExplanation()` | `ExplanationGenerator` in the screening layer (step 3) |
+| `FlaggedSpan.getExplanation()` | `ExplanationGenerator.explain()` (category descriptions from `detection_categories.json`) |
 | `RulePattern.matches(text)` | `RulePattern.matches()`; `RulePattern.finditer()` added so the detector can locate every match |
 | `TestSetEntry.runThroughDetectors()` | The evaluation harness (`run_rule_eval.py`, `run_context_eval.py`) |
 | `User.register()`, `User.authenticate()` | Supabase Auth (AUTH_DESIGN.md §0) |

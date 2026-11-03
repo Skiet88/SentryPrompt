@@ -19,7 +19,7 @@ This separation was already established in DOMAIN_MODEL.md (`TestSetEntry` has z
 
 ```mermaid
 flowchart TD
-    A[Student submits Prompt via webapp/extension] --> B[Screening Service: rule-based + context-aware detectors run in parallel — FR-004]
+    A[Student submits Prompt via webapp/extension] --> B[Screening Service: rule-based detector, redaction, then context-aware detector on redacted text — FR-004, NFR-008]
     B --> C[ScreeningResult created in-memory, FlaggedSpan(s) attached if flagged]
     C --> D[EvaluationLogEntry written — content-free, categoryId nullable if unflagged — NFR-009]
     D --> E{Student decision on flagged prompt}

@@ -71,7 +71,7 @@ Text to classify:
 
 ## 3. Integration with the Existing Pipeline
 
-No change to ../architecture/ARCHITECTURE.md's Component diagram is required — this fills in what was previously described generically as *"Pretrained NLP model or LLM-as-judge via Ollama"*. The Context-Aware Detector component now specifically means: preprocessed text → local redaction of rule-detected spans → fixed prompt template → configured LLM provider (Groq by default, temperature 0, JSON mode) → JSON parse → flagged spans passed to the Decision Aggregator, run in parallel with the Rule-Based Detector, exactly as FR-004 requires.
+No change to ../architecture/ARCHITECTURE.md's Component diagram is required — this fills in what was previously described generically as *"Pretrained NLP model or LLM-as-judge via Ollama"*. The Context-Aware Detector component now specifically means: preprocessed text → local redaction of rule-detected spans → fixed prompt template → configured LLM provider (Groq by default, temperature 0, JSON mode) → JSON parse → flagged spans (mapped back to the original text) passed to aggregation. It runs on every prompt after the Rule-Based Detector and redaction, exactly as FR-004 requires.
 
 ---
 
