@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Self
+from typing import Any, Self
 
 from app.domain import MessageRole
 from app.exception import ConfigurationError, ProviderError
@@ -32,19 +32,19 @@ class GeminiProvider(LLMProvider):
     def from_config(cls, config: LLMConfig) -> Self:
         return cls(model=config.gemini_model, api_key=config.gemini_api_key)
 
-    def _generate(self, contents, config=None) -> str:
+    async def _generate(self, contents: Any, config: Any = None) -> str:
         try:
-            response = self._client.models.generate_content(
+            response = await self._client.aio.models.generate_content(
                 model=self.model, contents=contents, config=config
             )
         except Exception as exc:
             raise ProviderError(f"Gemini request failed: {exc}") from exc
         return response.text or ""
 
-    def complete_json(self, system_prompt: str, user_text: str) -> str:
+    async def complete_json(self, system_prompt: str, user_text: str) -> str:
         from google.genai import types
 
-        return self._generate(
+        return await self._generate(
             user_text,
             types.GenerateContentConfig(
                 system_instruction=system_prompt,
@@ -53,7 +53,7 @@ class GeminiProvider(LLMProvider):
             ),
         )
 
-    def chat(self, messages: Sequence[ChatMessage]) -> str:
+    async def chat(self, messages: Sequence[ChatMessage]) -> str:
         from google.genai import types
 
         contents = [
@@ -63,4 +63,4 @@ class GeminiProvider(LLMProvider):
             )
             for m in messages
         ]
-        return self._generate(contents)
+        return await self._generate(contents)

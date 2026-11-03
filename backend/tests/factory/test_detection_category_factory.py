@@ -11,12 +11,15 @@ def test_builds_category():
     assert category.category_id
 
 
-@pytest.mark.parametrize("name, description, tier", [
-    ("", "desc", "rule-based"),
-    ("name", "", "rule-based"),
-    ("name", "desc", "semantic"),
-    ("x" * 101, "desc", "rule-based"),
-])
+@pytest.mark.parametrize(
+    "name, description, tier",
+    [
+        ("", "desc", "rule-based"),
+        ("name", "", "rule-based"),
+        ("name", "desc", "semantic"),
+        ("x" * 101, "desc", "rule-based"),
+    ],
+)
 def test_rejects_invalid_input(name, description, tier):
     with pytest.raises(InvalidArgumentError):
         build_detection_category(name, description, tier)

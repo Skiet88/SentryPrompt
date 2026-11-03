@@ -13,9 +13,14 @@ def test_default_provider_is_groq(config):
     assert isinstance(factory.create(config), GroqProvider)
 
 
-@pytest.mark.parametrize("name, cls", [
-    ("groq", GroqProvider), ("gemini", GeminiProvider), ("ollama", OllamaProvider),
-])
+@pytest.mark.parametrize(
+    "name, cls",
+    [
+        ("groq", GroqProvider),
+        ("gemini", GeminiProvider),
+        ("ollama", OllamaProvider),
+    ],
+)
 def test_provider_selected_by_setting(config, name, cls):
     assert isinstance(factory.create(config.with_(llm_provider=name)), cls)
 

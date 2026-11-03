@@ -27,7 +27,7 @@ def is_timezone_aware(value: datetime | None) -> bool:
 
 
 def is_valid_regex(value: str | None) -> bool:
-    if is_blank(value):
+    if value is None or is_blank(value):
         return False
     try:
         re.compile(value)

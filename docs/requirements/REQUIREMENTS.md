@@ -52,6 +52,7 @@
 | **Security** | NFR-012 | Passwords shall be hashed using a strong adaptive hashing algorithm and never stored or logged in plaintext. Implemented by Supabase Auth (bcrypt); the application database and backend never receive or store password hashes. *(Revised: originally a custom bcrypt implementation.)* |
 | **Security** | NFR-013 | Administrators shall have account-level visibility only (status, verification state, audit trail); the admin role shall have no access path to the content of another user's conversations, by design. |
 | **Compliance** | NFR-014 | A student shall be able to permanently delete their account and all associated conversation data in a single action, satisfying POPIA's right-to-erasure expectation; deletion shall remove underlying records, not merely hide them. |
+| **Security** | NFR-015 | Screening shall fail closed: if the context-aware check cannot complete (provider error, timeout beyond its time limit, or an unreadable reply), the prompt shall not be treated as clean. The student shall be told the check was incomplete and offered the same edit / send anyway / cancel choice as for a flagged prompt (FR-007). |
 
 ---
 

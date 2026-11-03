@@ -17,13 +17,22 @@ def test_rejects_invalid_indices(start, end):
         build_flagged_span("result-1", start, end, "rule", "cat-1")
 
 
-@pytest.mark.parametrize("field, kwargs", [
-    ("result_id", {"result_id": ""}),
-    ("category_id", {"category_id": " "}),
-    ("detector_source", {"detector_source": "regex"}),
-])
+@pytest.mark.parametrize(
+    "field, kwargs",
+    [
+        ("result_id", {"result_id": ""}),
+        ("category_id", {"category_id": " "}),
+        ("detector_source", {"detector_source": "regex"}),
+    ],
+)
 def test_rejects_invalid_fields(field, kwargs):
-    args = {"result_id": "r", "start_index": 0, "end_index": 1, "detector_source": "context",
-            "category_id": "c", **kwargs}
+    args = {
+        "result_id": "r",
+        "start_index": 0,
+        "end_index": 1,
+        "detector_source": "context",
+        "category_id": "c",
+        **kwargs,
+    }
     with pytest.raises(InvalidArgumentError, match=field):
         build_flagged_span(**args)

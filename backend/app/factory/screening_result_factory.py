@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from app.domain import ScreeningResult, Verdict
+from app.exception import InvalidArgumentError
 
 from . import _require
 
@@ -18,6 +19,9 @@ def build_screening_result(
     """The aggregated verdict is always computed here (ScreeningResult.aggregate),
     never accepted from the caller, so it can't disagree with the two detectors."""
     rule = _require.enum_value(Verdict, rule_based_verdict, "rule_based_verdict")
+    if rule is Verdict.UNAVAILABLE:
+        # The rule-based detector runs locally and always completes.
+        raise InvalidArgumentError("rule_based_verdict cannot be UNAVAILABLE")
     context = _require.enum_value(Verdict, context_aware_verdict, "context_aware_verdict")
     return ScreeningResult(
         result_id=_require.new_or_given_id(result_id, "result_id"),

@@ -10,11 +10,14 @@ def test_builds_message():
     assert message.role is MessageRole.ASSISTANT
 
 
-@pytest.mark.parametrize("conversation_id, role, content", [
-    ("", "user", "hi"),
-    ("conv-1", "system", "hi"),
-    ("conv-1", "user", "  "),
-])
+@pytest.mark.parametrize(
+    "conversation_id, role, content",
+    [
+        ("", "user", "hi"),
+        ("conv-1", "system", "hi"),
+        ("conv-1", "user", "  "),
+    ],
+)
 def test_rejects_invalid_input(conversation_id, role, content):
     with pytest.raises(InvalidArgumentError):
         build_message(conversation_id, role, content)

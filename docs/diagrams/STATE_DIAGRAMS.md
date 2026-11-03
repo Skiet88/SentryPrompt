@@ -31,6 +31,7 @@ stateDiagram-v2
 
     Screening --> Clean: aggregatedVerdict = unflagged
     Screening --> Flagged: aggregatedVerdict = flagged
+    Screening --> Flagged: aggregatedVerdict = unavailable\n(context check incomplete — fail closed, NFR-015)
 
     Clean --> Forwarded: auto-forwarded to LLM provider (FR-008)
 

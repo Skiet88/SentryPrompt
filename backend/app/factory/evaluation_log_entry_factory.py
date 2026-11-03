@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain import EvaluationLogEntry, EvaluationOutcome
 from app.exception import InvalidArgumentError
@@ -11,7 +11,7 @@ from . import _require
 def to_hour_bucket(moment: datetime) -> str:
     """Truncate to the hour (UTC) so log entries can't be matched to an
     individual request by exact time (NFR-009)."""
-    return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:00Z")
+    return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:00Z")
 
 
 def build_evaluation_log_entry(

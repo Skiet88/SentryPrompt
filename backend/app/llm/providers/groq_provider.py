@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Self
+from typing import Any, Self
 
 from app.exception import ConfigurationError, ProviderError
 
@@ -22,23 +22,23 @@ class GroqProvider(LLMProvider):
         super().__init__(model)
         if not api_key:
             raise ConfigurationError("GROQ_API_KEY is not set")
-        from groq import Groq
+        from groq import AsyncGroq
 
-        self._client = Groq(api_key=api_key)
+        self._client = AsyncGroq(api_key=api_key)
 
     @classmethod
     def from_config(cls, config: LLMConfig) -> Self:
         return cls(model=config.groq_model, api_key=config.groq_api_key)
 
-    def _create(self, **kwargs) -> str:
+    async def _create(self, **kwargs: Any) -> str:
         try:
-            response = self._client.chat.completions.create(model=self.model, **kwargs)
+            response = await self._client.chat.completions.create(model=self.model, **kwargs)
         except Exception as exc:
             raise ProviderError(f"Groq request failed: {exc}") from exc
         return response.choices[0].message.content or ""
 
-    def complete_json(self, system_prompt: str, user_text: str) -> str:
-        return self._create(
+    async def complete_json(self, system_prompt: str, user_text: str) -> str:
+        return await self._create(
             temperature=0,
             response_format={"type": "json_object"},
             messages=[
@@ -47,5 +47,5 @@ class GroqProvider(LLMProvider):
             ],
         )
 
-    def chat(self, messages: Sequence[ChatMessage]) -> str:
-        return self._create(messages=[{"role": m.role.value, "content": m.content} for m in messages])
+    async def chat(self, messages: Sequence[ChatMessage]) -> str:
+        return await self._create(messages=[{"role": m.role.value, "content": m.content} for m in messages])

@@ -16,7 +16,7 @@ E = TypeVar("E", bound=Enum)
 
 
 def text(value: str | None, field: str, max_length: int | None = None) -> str:
-    if is_blank(value):
+    if value is None or is_blank(value):
         raise InvalidArgumentError(f"{field} cannot be empty")
     if max_length is not None and len(value) > max_length:
         raise InvalidArgumentError(f"{field} cannot be longer than {max_length} characters")

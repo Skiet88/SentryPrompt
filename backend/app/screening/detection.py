@@ -4,7 +4,7 @@ persisted ScreeningResult and FlaggedSpan entities (step 3)."""
 from dataclasses import dataclass
 from enum import StrEnum
 
-from app.domain import DetectorSource
+from app.domain import DetectorSource, Verdict
 
 
 class ContextCategory(StrEnum):
@@ -35,10 +35,23 @@ class ContextDetectionResult:
     model: str
     prompt_version: str
     spans: tuple[DetectedSpan, ...] = ()
-    # True when the model's reply was not valid JSON: treated as "no flags"
-    # but reported separately in the evaluation (MODEL_ARCHITECTURE.md §2).
+    # True when the model's reply was not valid JSON. Reported separately in
+    # the evaluation (MODEL_ARCHITECTURE.md §2).
     parse_failed: bool = False
+    # Set when the check could not complete: provider error, timeout, or an
+    # unreadable reply. Never treated as clean (fail closed, NFR-015).
+    failure_reason: str | None = None
 
     @property
     def is_flagged(self) -> bool:
         return bool(self.spans)
+
+    @property
+    def completed(self) -> bool:
+        return self.failure_reason is None
+
+    @property
+    def verdict(self) -> Verdict:
+        if not self.completed:
+            return Verdict.UNAVAILABLE
+        return Verdict.FLAG if self.spans else Verdict.NO_FLAG

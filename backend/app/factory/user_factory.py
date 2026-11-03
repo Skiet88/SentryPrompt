@@ -27,8 +27,10 @@ def build_user(
         raise InvalidArgumentError("email must be a valid email address")
     if not isinstance(email_verified, bool):
         raise InvalidArgumentError("email_verified must be true or false")
-    name = "" if is_blank(display_name) else _require.text(
-        display_name.strip(), "display_name", MAX_DISPLAY_NAME_LENGTH
+    name = (
+        ""
+        if is_blank(display_name)
+        else _require.text(display_name.strip(), "display_name", MAX_DISPLAY_NAME_LENGTH)
     )
     return User(
         user_id=_require.identifier(user_id, "user_id"),
