@@ -6,10 +6,11 @@ selected by LLM_PROVIDER (groq by default; see backend/.env.example).
 Mirrors the live pipeline: rule-based flags are redacted locally first, then
 only the redacted text is sent to the provider.
 
+Settings are read from backend/.env (copy backend/.env.example and add a key).
+
 Usage (from the repo root):
-    pip install -r backend/requirements.txt
-    export GROQ_API_KEY=...            # free key from console.groq.com
-    python run_context_eval.py         # or: LLM_PROVIDER=gemini python run_context_eval.py
+    cd backend && uv sync && cd ..
+    backend/.venv/bin/python run_context_eval.py   # LLM_PROVIDER in backend/.env picks the provider
 """
 
 import json
@@ -20,7 +21,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.llm import ProviderError, get_provider  # noqa: E402
+from app.config.settings import Settings  # noqa: E402
+from app.exception import SentryPromptError  # noqa: E402
+from app.llm import LLMProviderFactory  # noqa: E402
+from app.screening.classification_parser import ClassificationParser  # noqa: E402
+from app.screening.context_aware_detector import ContextAwareDetector  # noqa: E402
+from app.screening.prompt_template import CONTEXT_DETECTOR_PROMPT_VERSION, PromptTemplate  # noqa: E402
 from app.screening.redaction import redact  # noqa: E402
 from run_rule_eval import TEST_SET_PATH, find_rule_flags, load_rows  # noqa: E402
 
@@ -41,9 +47,12 @@ def outcome(predicted, actual):
 
 def main():
     try:
-        provider = get_provider()
-    except ProviderError as exc:
+        provider = LLMProviderFactory().create(Settings())
+    except SentryPromptError as exc:
         sys.exit(f"Cannot start: {exc}")
+    detector = ContextAwareDetector(
+        provider, PromptTemplate.load(CONTEXT_DETECTOR_PROMPT_VERSION), ClassificationParser()
+    )
 
     rows = load_rows()
     details, latencies, parse_failures = [], [], 0
@@ -55,8 +64,8 @@ def main():
 
         started = time.perf_counter()
         try:
-            result = provider.classify(safe_text)
-        except ProviderError as exc:
+            result = detector.detect(safe_text)
+        except SentryPromptError as exc:
             sys.exit(f"{row['entryId']}: {exc}")
         latencies.append(time.perf_counter() - started)
         parse_failures += result.parse_failed

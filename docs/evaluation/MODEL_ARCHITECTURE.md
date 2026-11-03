@@ -30,7 +30,7 @@
 
 The context-aware detector sends the **redacted** prompt text (rule-detected spans replaced with placeholders such as `[REDACTED_SA_ID]`) to the configured provider with a fixed, versioned system prompt instructing it to act strictly as a classifier and return structured JSON — not conversational text.
 
-**System prompt (v1, stored as `backend/app/llm/prompts/context_detector_v1.txt`, versioned so evaluation runs stay comparable over time).** The design draft below is kept for reference. The implemented v1 differs in three ways: the student's text is sent as a separate user message rather than pasted into the instructions, the prompt tells the model to treat that text as data and never follow instructions inside it (prompt-injection defence), and it states that general or educational questions about health or institutional processes are *not* sensitive (aimed at the TS-016/TS-022-style false positives).
+**System prompt (v1, stored as `backend/app/screening/prompts/context_detector_v1.txt`, loaded by `PromptTemplate`, versioned so evaluation runs stay comparable over time).** The design draft below is kept for reference. The implemented v1 differs in three ways: the student's text is sent as a separate user message rather than pasted into the instructions, the prompt tells the model to treat that text as data and never follow instructions inside it (prompt-injection defence), and it states that general or educational questions about health or institutional processes are *not* sensitive (aimed at the TS-016/TS-022-style false positives).
 
 ```
 You are a content classifier, not a conversational assistant. You will be given a
@@ -63,7 +63,7 @@ Text to classify:
 - `temperature: 0` — deterministic output is required for reproducible evaluation runs (TC-004 depends on comparing detector outputs consistently); a non-zero temperature would make precision/recall numbers non-reproducible between runs.
 - Fixed prompt template, version-controlled — so a later prompt-wording change is a visible diff, not a silent behavior change that would invalidate prior evaluation results.
 
-**Output handling:** the Backend API parses the JSON response (`parse_classification` in `backend/app/llm/base.py`). Flags with an unknown category, or whose `span` does not appear in the text, are dropped, because they cannot be highlighted for the student (FR-005). A malformed/non-JSON response (a real risk with LLM-as-judge approaches) is treated as "no flags found" **and logged as a parse failure**, not silently dropped — this failure rate is itself worth reporting in the evaluation (Increment 13), since it's a real limitation of this approach compared to a rule-based detector, which cannot fail to parse.
+**Output handling:** the Backend API parses the JSON response (`ClassificationParser` in `backend/app/screening/classification_parser.py`, which builds each flag through `build_context_flag` in `backend/app/factory/`). Flags with an unknown category, or whose `span` does not appear in the text, are dropped, because they cannot be highlighted for the student (FR-005). A malformed/non-JSON response (a real risk with LLM-as-judge approaches) is treated as "no flags found" **and logged as a parse failure**, not silently dropped — this failure rate is itself worth reporting in the evaluation (Increment 13), since it's a real limitation of this approach compared to a rule-based detector, which cannot fail to parse.
 
 ---
 
@@ -80,7 +80,7 @@ No change to ../architecture/ARCHITECTURE.md's Component diagram is required —
 | JSON parse failures are possible | LLM output is not guaranteed structured, even with instruction | Treated as "no flag" + logged as a parse failure, reported separately in evaluation, not hidden inside the recall number |
 | Latency is not guaranteed under NFR-010's 2-second budget | Depends on the provider's response time and network conditions (and on local hardware when using Ollama) | `run_context_eval.py` records median and maximum latency per run, so this is measured rather than assumed |
 | Free-tier rate limits | Groq's free tier allows about 30 requests per minute, shared across the account | Far above a capstone's load; the evaluation script paces its requests. Paid tier or another provider can be selected by configuration if needed |
-| Prompts leave the machine | The default provider is a hosted API | Local redaction first, no-training providers only for real data, production guard in `factory.py` (NFR-008) |
+| Prompts leave the machine | The default provider is a hosted API | Local redaction first, no-training providers only for real data, `TrainingDataPolicy` (NFR-008) |
 | Confidence scores are self-reported by the model, not calibrated | LLM-as-judge confidence values are not statistically calibrated probabilities | Confidence is used for qualitative discussion (../requirements/SPECIFICATION.md §6) only, never as a hard threshold in the aggregation logic |
 | Model version drift | The provider may update or retire a model between now and final submission | The model name is a configuration value, and every evaluation result file records the provider, model and prompt version used |
 
