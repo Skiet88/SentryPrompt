@@ -51,6 +51,8 @@ Architecture (P5) was drafted early, out of sequence, because Assignment 3's bri
 
 ## Open Follow-ups (tracked, not hidden)
 
+- **Before real users (deferred Supabase settings):** the development Supabase project is set up without CAPTCHA (docs/setup/SUPABASE_SETUP.md step 4) and without custom email sending (step 5). Both can be set up for free (Cloudflare Turnstile; Resend free tier) and **must** be done before any real student registers, together with a rate-limit review, exact redirect URLs, and a separate deployed project. Until then, sign-up testing uses the developer's own email address (Supabase's built-in email only delivers to project team members).
+
 - **Temporary security exception:** `POST /api/prompts/screen` is served without login, outside production only, until the auth step (backend plan, step 6), which must remove `Settings.unauthenticated_screening_enabled` and require a verified login.
 
 - **Docker:** the backend `Dockerfile` (ARCHITECTURE.md, Setup & Deployment) is added only once the application runs end to end, so that any container problem is clearly separate from application problems during development.

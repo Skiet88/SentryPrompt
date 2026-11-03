@@ -18,17 +18,16 @@ admins (AUTH_DESIGN.md §0.1), so the account itself must be protected:
 
 ---
 
-## 1. Create two projects
-
-Create one project for **development** and, later, one for the **deployed** app
-(the free tier allows two active projects).
+## 1. Create the development project
 
 1. Sign in at https://supabase.com and click **New project**.
 2. Name it, e.g. `sentryprompt-dev`.
-3. Generate a strong **database password** and store it in your password manager.
-   It is not needed in chat or in Git.
-4. Choose the region closest to your users (for South Africa, the nearest
-   available region, e.g. an EU or `af-south` region if offered).
+3. Generate a strong **database password** and store it in your password
+   manager. It is needed in step 6; it is never pasted into chat or Git.
+4. Choose the region closest to your users.
+
+A second project for the **deployed** app is created later, before
+deployment (the free tier allows two active projects).
 
 Free-tier projects **pause after about a week without activity**. Open the
 project before demos and presentations (EVALUATION_OF_DESIGN.md §9.4).
@@ -49,47 +48,101 @@ project before demos and presentations (EVALUATION_OF_DESIGN.md §9.4).
 
 - **Site URL:** `http://localhost:5173` for the development project; the real
   HTTPS frontend URL for the deployed project.
-- **Redirect URLs:** add only the exact pages the verification and reset links
-  may return to, e.g. `http://localhost:5173/auth/callback` and
+- **Redirect URLs:** leave empty until the frontend exists. Then add only the
+  exact pages the verification and reset links may return to, e.g.
+  `http://localhost:5173/auth/callback` and
   `http://localhost:5173/reset-password`. Never use wildcards that match other
   domains (SECURITY_RULES.md §4: redirects only to allow-listed URLs).
 
-## 4. Turn on bot protection (before real users)
+## 4. Bot protection — DEFERRED until before real users
+
+Not needed during development. **Must be done before any real student uses
+the app** (tracked in PROJECT_BACKLOG.md, Open Follow-ups).
 
 **Authentication → Attack Protection** (or similar)
 
-- Enable **CAPTCHA** (hCaptcha or Cloudflare Turnstile) for sign-up and login.
+- Enable **CAPTCHA** for sign-up and login. Free options exist:
+  **Cloudflare Turnstile** is free, and hCaptcha has a free plan. You create a
+  site key/secret key there and paste them into Supabase.
 - Review **Rate Limits** for sign-ups, logins and emails; keep the defaults or
   lower them.
 
-## 5. Configure email sending (before real users)
+## 5. Email sending — DEFERRED until before real users
 
-Supabase's built-in email sender is for testing only and heavily rate-limited.
-Before real students register:
+Not needed during development, with one limitation: Supabase's built-in email
+sender only delivers to the **email addresses of your Supabase team members**
+and is heavily rate-limited. While developing, test sign-up with your own
+email address.
+
+**Must be done before any real student registers** (tracked in
+PROJECT_BACKLOG.md, Open Follow-ups):
 
 **Authentication → Emails → SMTP Settings**
 
-- Enable custom SMTP and enter the details from a free-tier provider such as
-  Resend (sender address on a domain you control).
+- Enable custom SMTP and enter the details from an email provider.
+  **Resend** has a free tier suitable for this project; it needs a sender
+  address on a domain you control.
 - Optionally edit the email templates so they are clearly from SentryPrompt4.
 
-## 6. Collect the keys and URLs (never paste them in chat)
+## 6. Find and save three values
 
-**Project Settings → API / API Keys** and **Project Settings → Database**
+In this step you only **find and save** values. Nothing goes into the project
+yet: the backend starts using them in backend plan step 5 (database) and
+step 6 (login), and `.env.example` will then say exactly which line gets which
+value.
 
-| Value | Where it goes | Secret? |
+Save the two **secret** values in a password manager (Bitwarden is free), or
+at least a private note **outside** the project folder. Never paste them into
+chat, documents, screenshots, Git, or any file other than `backend/.env`.
+
+### Value 1: Project URL (not secret)
+
+1. Click the **gear icon (Project Settings)** at the bottom of the left menu.
+2. Click **Data API** (called **API** on some projects).
+3. Copy the **Project URL**, e.g. `https://abcdefgh.supabase.co`.
+
+### Value 2: Secret key (SECRET)
+
+1. In **Project Settings**, click **API Keys**.
+2. Under **Secret keys** (`sb_secret_…`), click **Reveal**, or **Create a
+   secret key** if none exists, and copy it. On older projects this is the
+   **service_role** key.
+3. Save it in your password manager.
+
+This key bypasses every security rule in the database. It is only ever used
+by the backend. If it leaks, delete it on the same page and create a new one.
+
+The **Publishable key** (`sb_publishable_…`, or **anon** on older projects) on
+the same page is not secret and is only needed later by the frontend; nothing
+to do with it now.
+
+### Value 3: Database connection string (SECRET)
+
+1. Click the **Connect** button at the **top** of the project page.
+2. Choose **Connection string**, then **URI**, then **Session pooler** if
+   offered (it works on all networks).
+3. Copy the text starting with `postgresql://postgres.…`.
+4. Replace `[YOUR-PASSWORD]` in it with the database password from step 1.
+   Forgotten it? **Project Settings → Database → Reset database password**.
+5. Save the complete string in your password manager.
+
+### Nothing to do: JWKS URL
+
+The backend checks login tokens using Supabase's public keys at
+`https://<your-project>.supabase.co/auth/v1/.well-known/jwks.json`. It works
+this address out from the Project URL; nothing needs copying.
+
+### Where the values will go (later)
+
+| Value | Used from | Goes into |
 |---|---|---|
-| Project URL | `backend/.env` and `frontend/.env` | No |
-| Publishable (anon) key | `frontend/.env` only | No: designed to be public, safe because of Row Level Security |
-| Secret (service-role) key | `backend/.env` only | **Yes**: full access, backend only, never in the frontend, Git or chat |
-| Database connection string | `backend/.env` (`DATABASE_URL`) | **Yes**: contains the database password |
-| JWT verification (JWKS) URL | Backend config | No: public keys used to check login tokens |
+| Project URL | Backend plan step 5, and the frontend | `backend/.env`, later `frontend/.env` |
+| Secret key | Backend plan step 6 | `backend/.env` only |
+| Connection string | Backend plan step 5 | `backend/.env` only |
+| Publishable key | Frontend | `frontend/.env` |
 
 `.env` files are listed in `.gitignore`, so they are never committed. In
 deployment, the same values go into the hosting platform's secret settings.
-
-The backend settings for these values are added in steps 5 and 6 of the
-backend plan; until then, keep them only in your password manager.
 
 ## 7. Create the first admin (after the database tables exist)
 
@@ -114,11 +167,20 @@ There is deliberately no way to do this from inside the application
 
 ## 8. Checklist
 
+**Now (development):**
 - [ ] Supabase account has 2FA on
 - [ ] Development project created; database password in password manager
-- [ ] Confirm email on; minimum password length ≥ 10; link expiry 1 hour
-- [ ] Site URL and exact redirect URLs set
-- [ ] CAPTCHA and rate limits reviewed (before real users)
-- [ ] Custom SMTP configured (before real users)
-- [ ] Keys stored only in `.env` files / password manager
-- [ ] First admin promoted (after step 5 of the backend plan)
+- [ ] Confirm email on; minimum password length ≥ 10; secure email change on
+- [ ] Site URL set (redirect URLs added once the frontend exists)
+- [ ] Project URL, secret key and connection string saved in password manager
+
+**Later (backend plan step 5 onwards):**
+- [ ] Values added to `backend/.env` as `.env.example` describes
+- [ ] First admin promoted (step 7 of this guide)
+
+**Before any real student uses the app:**
+- [ ] CAPTCHA enabled (step 4; Cloudflare Turnstile is free)
+- [ ] Custom SMTP configured (step 5; Resend has a free tier)
+- [ ] Rate limits reviewed
+- [ ] Redirect URLs restricted to the real frontend
+- [ ] Deployed project created (separate from development)
