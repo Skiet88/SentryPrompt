@@ -1,6 +1,6 @@
 {
   "summary": {
-    "detector": "rule-based (screening.ts RULE_PATTERNS + overlap resolution, Luhn check, bank_account rule)",
+    "detector": "rule-based (backend RuleBasedDetector, detection_categories.json)",
     "n_entries": 40,
     "TP": 7,
     "FP": 1,
@@ -21,7 +21,7 @@
       "predicted": "FLAG",
       "outcome": "TP",
       "matchedCategories": [
-        "student_number"
+        "STUDENT_NUMBER"
       ]
     },
     {
@@ -31,7 +31,7 @@
       "predicted": "FLAG",
       "outcome": "TP",
       "matchedCategories": [
-        "sa_id"
+        "SA_ID"
       ]
     },
     {
@@ -57,7 +57,7 @@
       "predicted": "FLAG",
       "outcome": "TP",
       "matchedCategories": [
-        "bank_account"
+        "BANK_ACCOUNT"
       ]
     },
     {
@@ -67,7 +67,7 @@
       "predicted": "FLAG",
       "outcome": "TP",
       "matchedCategories": [
-        "bank_card"
+        "BANK_CARD"
       ]
     },
     {
@@ -77,7 +77,7 @@
       "predicted": "FLAG",
       "outcome": "FP",
       "matchedCategories": [
-        "bank_card"
+        "BANK_CARD"
       ]
     },
     {
@@ -95,8 +95,8 @@
       "predicted": "FLAG",
       "outcome": "TP",
       "matchedCategories": [
-        "address",
-        "phone"
+        "ADDRESS",
+        "PHONE"
       ]
     },
     {
@@ -106,7 +106,7 @@
       "predicted": "FLAG",
       "outcome": "TP",
       "matchedCategories": [
-        "email"
+        "EMAIL"
       ]
     },
     {
@@ -308,7 +308,7 @@
       "predicted": "FLAG",
       "outcome": "TP",
       "matchedCategories": [
-        "sa_id"
+        "SA_ID"
       ]
     },
     {

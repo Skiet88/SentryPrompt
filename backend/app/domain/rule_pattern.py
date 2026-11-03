@@ -1,4 +1,5 @@
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 
@@ -18,3 +19,6 @@ class RulePattern:
 
     def matches(self, text: str) -> bool:
         return self._compiled.search(text) is not None
+
+    def finditer(self, text: str) -> Iterator[re.Match[str]]:
+        return self._compiled.finditer(text)

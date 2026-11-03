@@ -3,6 +3,7 @@ persisted ScreeningResult and FlaggedSpan entities (step 3)."""
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Protocol
 
 from app.domain import DetectorSource, Verdict
 
@@ -25,6 +26,29 @@ class DetectedSpan:
     # Self-reported by the LLM; for qualitative discussion only, never a
     # threshold (MODEL_ARCHITECTURE.md §4).
     confidence: float | None = None
+
+
+class DetectionResult(Protocol):
+    """What every detector returns (Liskov: the screening service treats all
+    detectors' results the same way)."""
+
+    @property
+    def spans(self) -> tuple[DetectedSpan, ...]: ...
+
+    @property
+    def verdict(self) -> Verdict: ...
+
+
+@dataclass(frozen=True, slots=True)
+class RuleDetectionResult:
+    """Outcome of the rule-based detector. It runs locally and always
+    completes, so its verdict is never UNAVAILABLE."""
+
+    spans: tuple[DetectedSpan, ...] = ()
+
+    @property
+    def verdict(self) -> Verdict:
+        return Verdict.FLAG if self.spans else Verdict.NO_FLAG
 
 
 @dataclass(frozen=True, slots=True)
