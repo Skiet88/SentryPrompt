@@ -1,0 +1,19 @@
+[project]
+name = "sentryprompt-backend"
+version = "0.1.0"
+description = "SentryPrompt4 backend: prompt screening API"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi[standard]",
+    "pydantic-settings",
+    "httpx",
+    "groq",
+    "google-genai",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
