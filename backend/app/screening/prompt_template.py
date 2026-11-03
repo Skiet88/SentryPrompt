@@ -17,7 +17,7 @@ class PromptTemplate:
     text: str
 
     @classmethod
-    def load(cls, version: str, directory: Path = PROMPTS_DIR) -> "PromptTemplate":
+    def load(cls, version: str, directory: Path = PROMPTS_DIR) -> PromptTemplate:
         path = directory / f"{version}.txt"
         if not path.is_file():
             raise ConfigurationError(f"Prompt template '{version}' not found in {directory}")

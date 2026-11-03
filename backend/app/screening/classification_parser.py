@@ -26,13 +26,15 @@ class ClassificationParser:
         items = self._extract_items(raw_reply)
         if items is None:
             logger.warning("Context detector reply was not valid JSON (%s/%s)", provider, model)
-            return ContextDetectionResult(provider, model, prompt_version, parse_failed=True)
+            return ContextDetectionResult(
+                provider, model, prompt_version, parse_failed=True, failure_reason="unreadable_reply"
+            )
 
         spans = tuple(s for s in (self._to_span(i, source_text) for i in items) if s is not None)
         return ContextDetectionResult(provider, model, prompt_version, spans=spans)
 
     @staticmethod
-    def _extract_items(raw_reply: str) -> list | None:
+    def _extract_items(raw_reply: str) -> list[object] | None:
         try:
             items = json.loads(raw_reply)["flags"]
         except (json.JSONDecodeError, KeyError, TypeError):

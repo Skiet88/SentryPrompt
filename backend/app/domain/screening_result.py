@@ -18,11 +18,22 @@ class ScreeningResult:
 
     @staticmethod
     def aggregate(rule_based: Verdict, context_aware: Verdict) -> Verdict:
-        """Flag if either detector flagged (parallel detection, FR-004)."""
-        if Verdict.FLAG in (rule_based, context_aware):
+        """FLAG if either detector flagged (FR-004). Otherwise UNAVAILABLE if
+        the context-aware check could not complete (fail closed, NFR-015).
+        NO_FLAG only when both checks completed and found nothing."""
+        verdicts = (rule_based, context_aware)
+        if Verdict.FLAG in verdicts:
             return Verdict.FLAG
+        if Verdict.UNAVAILABLE in verdicts:
+            return Verdict.UNAVAILABLE
         return Verdict.NO_FLAG
 
     @property
     def is_flagged(self) -> bool:
         return self.aggregated_verdict is Verdict.FLAG
+
+    @property
+    def requires_student_decision(self) -> bool:
+        """True unless the prompt is confirmed clean: flagged or unchecked
+        prompts both go through edit / send anyway / cancel (FR-007)."""
+        return self.aggregated_verdict is not Verdict.NO_FLAG

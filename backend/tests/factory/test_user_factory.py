@@ -16,14 +16,17 @@ def test_trims_display_name():
     assert build_user("uid-1", "a@b.co", display_name="  Thabo  ").display_name == "Thabo"
 
 
-@pytest.mark.parametrize("kwargs, message", [
-    ({"user_id": ""}, "user_id"),
-    ({"email": "not-an-email"}, "email"),
-    ({"role": "superuser"}, "role"),
-    ({"status": "deleted"}, "status"),
-    ({"email_verified": "yes"}, "email_verified"),
-    ({"display_name": "x" * (MAX_DISPLAY_NAME_LENGTH + 1)}, "display_name"),
-])
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"user_id": ""}, "user_id"),
+        ({"email": "not-an-email"}, "email"),
+        ({"role": "superuser"}, "role"),
+        ({"status": "deleted"}, "status"),
+        ({"email_verified": "yes"}, "email_verified"),
+        ({"display_name": "x" * (MAX_DISPLAY_NAME_LENGTH + 1)}, "display_name"),
+    ],
+)
 def test_rejects_invalid_input(kwargs, message):
     args = {"user_id": "uid-1", "email": "a@b.co", **kwargs}
     with pytest.raises(InvalidArgumentError, match=message):

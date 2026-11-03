@@ -28,10 +28,15 @@ class PromptStatus(StrEnum):
 
 
 class Verdict(StrEnum):
-    """ScreeningResult verdicts (SERVICE_LAYER.md §3)."""
+    """ScreeningResult verdicts (SERVICE_LAYER.md §3).
+
+    UNAVAILABLE means the context-aware check could not complete (provider
+    error, timeout, or an unreadable reply). Screening fails closed: an
+    unavailable check is never treated as clean (NFR-015)."""
 
     FLAG = "FLAG"
     NO_FLAG = "NO_FLAG"
+    UNAVAILABLE = "UNAVAILABLE"
 
 
 class DetectorSource(StrEnum):

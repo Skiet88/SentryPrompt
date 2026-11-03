@@ -284,7 +284,8 @@ Each String attribute that takes a fixed set of values is an enum in `backend/ap
 |---|---|
 | `Prompt.sourceChannel`, `Conversation.channel` | webapp, extension |
 | `Prompt.status` | draft, validating, rejected, screening, clean, flagged, edit_requested, overridden, cancelled, forwarded, response_received, discarded (STATE_DIAGRAMS.md §1) |
-| `ScreeningResult` verdicts, `TestSetEntry.groundTruthLabel` | FLAG, NO_FLAG |
+| `ScreeningResult` verdicts | FLAG, NO_FLAG, UNAVAILABLE (context check could not complete; the rule-based verdict is never UNAVAILABLE) |
+| `TestSetEntry.groundTruthLabel` | FLAG, NO_FLAG |
 | `FlaggedSpan.detectorSource` | rule, context |
 | `DetectionCategory.tier` | rule-based, context-aware |
 | `EvaluationLogEntry.outcome` | flagged, unflagged, override |

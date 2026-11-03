@@ -13,6 +13,7 @@ Usage (from the repo root):
     backend/.venv/bin/python run_context_eval.py   # LLM_PROVIDER in backend/.env picks the provider
 """
 
+import asyncio
 import json
 import sys
 import time
@@ -22,6 +23,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "backend"))
 
 from app.config.settings import Settings  # noqa: E402
+from app.domain import Verdict  # noqa: E402
 from app.exception import SentryPromptError  # noqa: E402
 from app.llm import LLMProviderFactory  # noqa: E402
 from app.screening.classification_parser import ClassificationParser  # noqa: E402
@@ -47,15 +49,20 @@ def outcome(predicted, actual):
 
 def main():
     try:
-        provider = LLMProviderFactory().create(Settings())
+        settings = Settings()
+        provider = LLMProviderFactory().create(settings)
     except SentryPromptError as exc:
         sys.exit(f"Cannot start: {exc}")
+    # Same time limit as the live service, so latency failures show up here too.
     detector = ContextAwareDetector(
-        provider, PromptTemplate.load(CONTEXT_DETECTOR_PROMPT_VERSION), ClassificationParser()
+        provider,
+        PromptTemplate.load(CONTEXT_DETECTOR_PROMPT_VERSION),
+        ClassificationParser(),
+        timeout_seconds=settings.context_detector_timeout_seconds,
     )
 
     rows = load_rows()
-    details, latencies, parse_failures = [], [], 0
+    details, latencies, parse_failures, unavailable = [], [], 0, 0
     for i, row in enumerate(rows):
         text = row["sampleText"]
         actual = row["groundTruthLabel"].strip().upper() == "FLAG"
@@ -63,14 +70,14 @@ def main():
         safe_text = redact(text, [(f["start"], f["end"], f["category"]) for f in rule_flags])
 
         started = time.perf_counter()
-        try:
-            result = detector.detect(safe_text)
-        except SentryPromptError as exc:
-            sys.exit(f"{row['entryId']}: {exc}")
+        result = asyncio.run(detector.detect(safe_text))
         latencies.append(time.perf_counter() - started)
         parse_failures += result.parse_failed
+        unavailable += not result.completed
 
-        context_flag = bool(result.spans)
+        # Fail closed (NFR-015): an unavailable check is shown to the student
+        # as a warning, so it counts as a predicted FLAG.
+        context_flag = result.verdict is not Verdict.NO_FLAG
         aggregated_flag = context_flag or bool(rule_flags)
         details.append({
             "entryId": row["entryId"], "category": row["groundTruthCategory"],
@@ -79,6 +86,8 @@ def main():
             "aggregatedOutcome": outcome(aggregated_flag, actual),
             "contextCategories": sorted({f.category for f in result.spans}),
             "parseFailed": result.parse_failed,
+            "contextVerdict": result.verdict.value,
+            "failureReason": result.failure_reason,
         })
         print(f"{row['entryId']}  context={details[-1]['contextOutcome']}  "
               f"aggregated={details[-1]['aggregatedOutcome']}  {details[-1]['contextCategories']}")
@@ -89,6 +98,8 @@ def main():
     summary = {
         "provider": provider.name, "model": provider.model, "prompt_version": result.prompt_version,
         "n_entries": len(rows), "parse_failures": parse_failures,
+        "unavailable_checks": unavailable,
+        "timeout_seconds": settings.context_detector_timeout_seconds,
         "median_latency_s": round(latencies[len(latencies) // 2], 3),
         "max_latency_s": round(latencies[-1], 3),
         "context_aware": metrics([d["contextOutcome"] for d in details]),

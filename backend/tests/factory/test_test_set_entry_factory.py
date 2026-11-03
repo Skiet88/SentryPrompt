@@ -16,12 +16,16 @@ def test_clean_entry_cannot_be_flagged():
         build_test_set_entry("TS-025", "Outline an essay", "CLEAN", "FLAG")
 
 
-@pytest.mark.parametrize("entry_id, text, category, label", [
-    ("", "text", "CLEAN", "NO_FLAG"),
-    ("TS-1", "", "CLEAN", "NO_FLAG"),
-    ("TS-1", "text", "HEALTH", "NO_FLAG"),
-    ("TS-1", "text", "CLEAN", "YES"),
-])
+@pytest.mark.parametrize(
+    "entry_id, text, category, label",
+    [
+        ("", "text", "CLEAN", "NO_FLAG"),
+        ("TS-1", "", "CLEAN", "NO_FLAG"),
+        ("TS-1", "text", "HEALTH", "NO_FLAG"),
+        ("TS-1", "text", "CLEAN", "YES"),
+        ("TS-1", "text", "MEDICAL", "UNAVAILABLE"),
+    ],
+)
 def test_rejects_invalid_input(entry_id, text, category, label):
     with pytest.raises(InvalidArgumentError):
         build_test_set_entry(entry_id, text, category, label)

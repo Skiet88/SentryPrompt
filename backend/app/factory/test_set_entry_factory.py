@@ -14,6 +14,8 @@ def build_test_set_entry(
 ) -> TestSetEntry:
     category = _require.enum_value(TestSetCategory, ground_truth_category, "ground_truth_category")
     label = _require.enum_value(Verdict, ground_truth_label, "ground_truth_label")
+    if label is Verdict.UNAVAILABLE:
+        raise InvalidArgumentError("ground_truth_label must be FLAG or NO_FLAG")
     if category is TestSetCategory.CLEAN and label is Verdict.FLAG:
         raise InvalidArgumentError("A CLEAN entry cannot be labelled FLAG")
     return TestSetEntry(

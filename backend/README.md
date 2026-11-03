@@ -59,12 +59,32 @@ Get a free Groq key at https://console.groq.com, and turn on Zero Data
 Retention under Settings -> Data Controls. Check http://localhost:8000/health
 and the interactive API docs at http://localhost:8000/docs.
 
-## Tests
+## Checks
+
+The same checks run on GitHub on every push (`.github/workflows/backend.yml`):
 
 ```bash
 cd backend
-uv run pytest
+uv run pytest                    # tests
+uv run ruff check .              # lint, including Bandit security rules
+uv run ruff format --check .     # formatting
+uv run mypy                      # strict type checking
+uv run pip-audit                 # known vulnerabilities in dependencies
 ```
+
+## Security behaviour
+
+- **Fail closed:** if the context-aware check times out
+  (`CONTEXT_DETECTOR_TIMEOUT_SECONDS`), errors, or returns an unreadable reply,
+  its verdict is `UNAVAILABLE` and the prompt is never treated as clean.
+- Security headers on every response; HSTS in production.
+- Request bodies over `MAX_REQUEST_BYTES` are rejected with 413.
+- `/docs`, `/redoc` and `/openapi.json` are disabled in production.
+- Startup fails on unsafe settings (`*` in `CORS_ORIGINS`, non-HTTPS origins in production).
+- Server errors return a generic message; details go only to the server log,
+  which masks tokens and API keys.
+
+See `../SECURITY_RULES.md` for the full rules.
 
 ## Context-aware evaluation
 

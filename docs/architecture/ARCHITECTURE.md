@@ -161,6 +161,7 @@ C4Component
 | Browser Extension | TypeScript, browser extension APIs | Chrome/Firefox extensions require JavaScript (TypeScript compiles to it); a platform constraint, not a stack preference. |
 | Hosting (at deployment) | Frontend on a free static host (e.g. Vercel, Netlify, Cloudflare Pages); backend as a Docker container on a platform such as Render, Railway or Fly.io | Exact hosts are chosen at deployment time, after checking current free tiers. The `Dockerfile` keeps the backend portable between them. |
 | Secrets | `.env` locally (never committed); the host's secret settings in deployment | Holds the Supabase keys, database URL, Groq key and the message-encryption key (NFR-011). |
+| Quality and security checks | GitHub Actions on every push and pull request: ruff (lint, formatting, Bandit security rules), mypy (strict type checking), pytest, pip-audit (known vulnerabilities in dependencies); dependencies locked in `uv.lock` | Catches errors and vulnerable dependencies before they reach `main`; enforces SECURITY_RULES.md §6–§7 automatically. |
 
 ### Setup & Deployment (NFR-004)
 

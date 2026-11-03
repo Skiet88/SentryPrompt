@@ -11,7 +11,7 @@ class RulePattern:
     category_id: str
     regex_pattern: str
     description: str
-    _compiled: re.Pattern = field(init=False, repr=False, compare=False)
+    _compiled: re.Pattern[str] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "_compiled", re.compile(self.regex_pattern))

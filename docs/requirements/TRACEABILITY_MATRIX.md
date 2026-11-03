@@ -52,6 +52,7 @@
 | **NFR-012** — passwords hashed, never plaintext | Supabase Auth (bcrypt), ../architecture/AUTH_DESIGN.md §0 | The application database never stores passwords or hashes |
 | **NFR-013** — admin has no conversation-content access | `AdminService` has no `MessageRepository`/`ConversationRepository` dependency at all (../architecture/SERVICE_LAYER.md §1) | Structural, not a policy comment — the class cannot call what it was never given |
 | **NFR-014** — right-to-erasure account deletion | Same artefact as FR-020 (../architecture/AUTH_DESIGN.md §8.2) | POPIA compliance framing stated explicitly in SPECIFICATION.md §1.3; precedence over `AdminAuditLog` retention (FR-022) stated explicitly in §8.2, not left ambiguous |
+| **NFR-015** — screening fails closed | `Verdict.UNAVAILABLE`, `ScreeningResult.aggregate()`, `ContextAwareDetector` time limit (../evaluation/MODEL_ARCHITECTURE.md, Failure handling) | `backend/tests/screening/test_context_aware_detector.py` (timeout, provider error, unreadable reply), `backend/tests/factory/test_screening_result_factory.py` |
 
 ---
 

@@ -16,16 +16,18 @@ def redact(text: str, spans: Iterable[tuple[int, int, str]]) -> str:
 
     Overlapping spans are merged, keeping the first span's category.
     """
-    merged: list[list] = []
+    merged: list[tuple[int, int, str]] = []
     for start, end, category in sorted(spans):
         if not 0 <= start < end <= len(text):
             raise ValueError(f"span ({start}, {end}) is outside the text")
         if merged and start < merged[-1][1]:
-            merged[-1][1] = max(merged[-1][1], end)
+            prev_start, prev_end, prev_category = merged[-1]
+            merged[-1] = (prev_start, max(prev_end, end), prev_category)
         else:
-            merged.append([start, end, category])
+            merged.append((start, end, category))
 
-    out, pos = [], 0
+    out: list[str] = []
+    pos = 0
     for start, end, category in merged:
         out.append(text[pos:start])
         out.append(f"[REDACTED_{category.upper()}]")

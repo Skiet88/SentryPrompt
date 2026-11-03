@@ -1,3 +1,5 @@
+from datetime import UTC
+
 import pytest
 
 from app.util.validation import is_blank, is_probability
@@ -22,10 +24,17 @@ def test_invalid_probabilities(value):
     assert not is_probability(value)
 
 
-@pytest.mark.parametrize("value, expected", [
-    ("thabo@example.com", True), ("a@b.co", True),
-    ("no-at-sign", False), ("a@b", False), ("a b@c.com", False), (None, False),
-])
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("thabo@example.com", True),
+        ("a@b.co", True),
+        ("no-at-sign", False),
+        ("a@b", False),
+        ("a b@c.com", False),
+        (None, False),
+    ],
+)
 def test_is_valid_email(value, expected):
     from app.util.validation import is_valid_email
 
@@ -33,11 +42,11 @@ def test_is_valid_email(value, expected):
 
 
 def test_is_timezone_aware():
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.util.validation import is_timezone_aware
 
-    assert is_timezone_aware(datetime.now(timezone.utc))
+    assert is_timezone_aware(datetime.now(UTC))
     assert not is_timezone_aware(datetime(2026, 1, 1))
 
 

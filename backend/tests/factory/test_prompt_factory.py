@@ -18,11 +18,14 @@ def test_accepts_max_length():
     assert len(build_prompt("a" * MAX_PROMPT_LENGTH, "extension").raw_text) == MAX_PROMPT_LENGTH
 
 
-@pytest.mark.parametrize("text, message", [
-    ("", "cannot be empty"),
-    ("   ", "cannot be empty"),
-    ("a" * (MAX_PROMPT_LENGTH + 1), "cannot be longer"),
-])
+@pytest.mark.parametrize(
+    "text, message",
+    [
+        ("", "cannot be empty"),
+        ("   ", "cannot be empty"),
+        ("a" * (MAX_PROMPT_LENGTH + 1), "cannot be longer"),
+    ],
+)
 def test_rejects_empty_or_too_long_text(text, message):
     with pytest.raises(InvalidArgumentError, match=message):
         build_prompt(text, "webapp")

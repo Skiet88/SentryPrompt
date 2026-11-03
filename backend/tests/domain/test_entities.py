@@ -27,11 +27,14 @@ def test_rule_pattern_matches():
     assert not pattern.matches("No numbers here")
 
 
-@pytest.mark.parametrize("verified, status, allowed", [
-    (True, "active", True),
-    (False, "active", False),
-    (True, "suspended", False),
-])
+@pytest.mark.parametrize(
+    "verified, status, allowed",
+    [
+        (True, "active", True),
+        (False, "active", False),
+        (True, "suspended", False),
+    ],
+)
 def test_user_can_submit_prompts_only_when_verified_and_active(verified, status, allowed):
     user = build_user("uid", "a@b.co", email_verified=verified, status=status)
     assert user.can_submit_prompts is allowed
