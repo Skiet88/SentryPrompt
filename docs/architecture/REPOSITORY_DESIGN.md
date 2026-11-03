@@ -1,6 +1,6 @@
 # REPOSITORY_DESIGN.md — SentryPrompt4
 
-**Traces to:** DOMAIN_MODEL.md (14 entities), ARCHITECTURE.md (locked stack: Python/FastAPI, SQLite)
+**Traces to:** DOMAIN_MODEL.md (14 entities), ARCHITECTURE.md (stack: Python/FastAPI, PostgreSQL on Supabase via SQLAlchemy)
 **Feeds:** Design Phase Template §3.2.1 (Module Specifications), §3.1.3 (Tech Stack justification)
 **Scope note:** per the supervisor's own prior brief (PrevProjectAssignment.pdf, Assignment 12), a minimum of 3 entities is sufficient to demonstrate the pattern for a solo project. Below, the **generic interface applies to all 14 entities** (table in §2), but only **3 representative repositories are fully specified** (§3) — one from each meaningful category (auth/platform, product, research) — since the remaining 11 are structurally identical, and writing all 14 out in full would be repetition, not additional design work.
 
@@ -129,7 +129,7 @@ class InMemoryScreeningResultRepository(ScreeningResultRepository):
 
 ## 4. Storage Abstraction: Factory Pattern
 
-**Choice: Factory, not raw Dependency Injection framework.** For a solo project with two backends (in-memory for tests, SQLite for real use), a full DI container (e.g. `dependency-injector`) is more machinery than the problem needs — a small factory function achieves the same swappability with a fraction of the setup.
+**Choice: Factory, not raw Dependency Injection framework.** For a solo project with two backends (in-memory for tests, PostgreSQL via SQLAlchemy for real use), a full DI container (e.g. `dependency-injector`) is more machinery than the problem needs — a small factory function achieves the same swappability with a fraction of the setup.
 
 ```python
 class RepositoryFactory:
@@ -138,8 +138,8 @@ class RepositoryFactory:
         match storage_type:
             case "MEMORY":
                 return InMemoryUserRepository()
-            case "SQLITE":
-                return SQLiteUserRepository(db_path="sentryprompt.db")  # future-proofing stub, see §5
+            case "POSTGRES":
+                return PostgresUserRepository(database_url=settings.DATABASE_URL)  # see §5
             case _:
                 raise ValueError(f"Unknown storage type: {storage_type}")
     # One factory method per repository, same pattern — omitted here for brevity,
@@ -150,16 +150,18 @@ class RepositoryFactory:
 
 ## 5. Future-Proofing Stub
 
+**Note (stack revision):** in the implemented system, account identity lives in Supabase Auth (`auth.users`), so `UserRepository` reads and writes the `profiles` table (display name, role, status) and calls Supabase's admin API only where an auth record must change (email update, account deletion). The interface above is unchanged; only the storage behind it moved from SQLite to PostgreSQL.
+
 ```python
-class SQLiteUserRepository(UserRepository):
+class PostgresUserRepository(UserRepository):
     """
     Stub only — no full implementation required at design phase.
     Demonstrates the interface is storage-agnostic: swapping InMemoryUserRepository
     for this requires no change anywhere in the Service Layer (Increment 7).
     """
-    def __init__(self, db_path: str):
-        self._db_path = db_path
-        # real implementation would open a connection pool here
+    def __init__(self, database_url: str):
+        self._database_url = database_url
+        # real implementation creates a SQLAlchemy engine/session here
 
     def save(self, user: User) -> User:
         raise NotImplementedError("Implemented during build phase, not design phase")

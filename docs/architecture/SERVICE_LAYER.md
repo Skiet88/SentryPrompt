@@ -9,7 +9,7 @@
 
 | Service | Responsibility | Uses Repositories | Key business rules enforced |
 |---|---|---|---|
-| `AuthService` | Registration, verification, login/session, password reset | `UserRepository`, `SessionRepository`, `EmailVerificationTokenRepository`, `PasswordResetTokenRepository` | Rejects duplicate emails (FR-013); blocks unverified accounts from screening endpoints (FR-014); never reveals whether a failed login was a bad email or bad password (FR-015) |
+| `AuthService` | Verifies Supabase access tokens on every request; loads the caller's profile; profile updates and account deletion through Supabase's admin API | `UserRepository` (profiles) | Blocks unverified accounts from screening endpoints (FR-014) and suspended accounts from everything; rejects tokens whose session has ended (FR-016). Registration, login and reset themselves are done by Supabase Auth (AUTH_DESIGN.md §0), which also handles duplicate emails (FR-013) and generic login errors (FR-015) |
 | `ScreeningService` | Orchestrates rule-based + context-aware detection in parallel, aggregates result | `ScreeningResultRepository`, `FlaggedSpanRepository`, `EvaluationLogEntryRepository` | Enforces FR-004 (both detectors always run, never short-circuited); enforces NFR-009 (log entry is content-free, structurally, not by convention — see below) |
 | `ConversationService` | Persists approved messages, retrieves history, handles deletion | `ConversationRepository`, `MessageRepository` | A `Message` can only be created from a `Prompt` that has already passed through `ScreeningService` — enforced by requiring a `ScreeningResult` reference as a precondition, not just a code comment |
 | `AdminService` | Account management, audit logging | `UserRepository`, `AdminAuditLogRepository` | **Structurally has no dependency on `MessageRepository` or `ConversationRepository` at all** — not just "won't call it," the class doesn't have access to it, enforcing NFR-013 at the dependency-injection level |
@@ -57,12 +57,7 @@ class ScreeningService:
 
 | Method | Endpoint | Description | Auth Required |
 |---|---|---|---|
-| POST | `/api/auth/register` | Create a new account (FR-013) | No |
-| POST | `/api/auth/verify` | Verify email via token (FR-014) | No (token-based) |
-| POST | `/api/auth/login` | Log in, returns session (FR-015) | No |
-| POST | `/api/auth/logout` | Invalidate session (FR-016) | Yes |
-| POST | `/api/auth/reset-password/request` | Request reset token (FR-017) | No |
-| POST | `/api/auth/reset-password/confirm` | Set new password via token (FR-017) | No (token-based) |
+| — | *Supabase Auth* | Register, verify email, log in, log out, reset password (FR-013–FR-017). Called from the frontend with `supabase-js`; not backend endpoints (AUTH_DESIGN.md §0) | — |
 | GET | `/api/profile` | View own profile (FR-018) | Yes |
 | PUT | `/api/profile` | Edit own profile (FR-018) | Yes |
 | DELETE | `/api/profile` | Delete own account + all data (FR-020) | Yes |

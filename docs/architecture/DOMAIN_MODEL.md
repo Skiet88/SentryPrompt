@@ -138,6 +138,8 @@ classDiagram
 | **Message** | `messageId`, `conversationId`, `role` (user / assistant), `content` *(encrypted at rest — NFR-011)*, `createdAt` | — | Belongs to one `Conversation`; a user-role `Message` is created from an approved `Prompt` once screening clears it |
 | **AdminAuditLog** | `logId`, `adminUserId`, `targetUserId`, `actionType`, `timestamp`, `details` | — | References `User` (admin) and `User` (target) — account-level only, never references `Message` content (FR-021, NFR-013) |
 
+**Implementation note (stack revision):** these entities are the logical model. In the implemented system, `User`'s identity fields (`email`, `passwordHash`, `emailVerified`) and the `Session`, `EmailVerificationToken` and `PasswordResetToken` entities are managed by Supabase Auth; `displayName`, `role` and `status` live in a `profiles` table. See ERD.md §1A and AUTH_DESIGN.md §0.
+
 ### How the Product Layer Connects to the Research Layer
 
 ```
