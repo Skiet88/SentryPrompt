@@ -20,3 +20,8 @@
   (detectors, LLM providers), Facade (screening pipeline), dependency
   injection wired in main.py.
 - Tests mirror the app packages; every factory, service and router has tests.
+
+## Security rules
+These standing security rules apply to every change:
+
+@SECURITY_RULES.md
