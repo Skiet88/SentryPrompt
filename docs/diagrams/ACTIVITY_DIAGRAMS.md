@@ -24,11 +24,11 @@ flowchart TD
     G --> H
     H --> I[Aggregate verdicts]
     I --> J{Flagged?}
-    J -- No --> K[Forward prompt to Ollama - FR-008]
+    J -- No --> K[Forward prompt to LLM provider - FR-008]
     J -- Yes --> L[Highlight flagged span(s) - FR-005]
     L --> M[Show plain-language explanation - FR-006]
     M --> N[Continue to Review Flagged Content - UC3]
-    K --> O[Ollama generates response - FR-009]
+    K --> O[LLM provider generates response - FR-009]
     O --> P[Return response via web app - FR-009]
     P --> Q([End])
 ```
@@ -69,11 +69,11 @@ flowchart TD
     C --> D[Resubmit]
     D --> E([Re-enters screening from scratch\n- UC1/UC2 step 3, no shortcut])
     B -- Send Anyway --> F[Log override event\ncontent NOT logged - NFR-009]
-    F --> G[Forward original prompt to Ollama]
+    F --> G[Forward original prompt to LLM provider]
     G --> H([Continue to UC7 - View AI Response])
     B -- Cancel --> I[Discard prompt]
     I --> J[Log cancellation\ncontent NOT logged - NFR-009]
-    J --> K([Nothing forwarded to Ollama\nor third-party platform - FR-008])
+    J --> K([Nothing forwarded to LLM provider\nor third-party platform - FR-008])
 ```
 
 ---
@@ -158,8 +158,8 @@ flowchart TD
     B -- Cancelled --> C[Discarded - never persisted]
     B -- Clean, or Flagged + Send Anyway --> D[Create Message\nrole = user, content encrypted at\nrest - NFR-011]
     D --> E[Append Message to Conversation\n- create Conversation if first message]
-    E --> F[Forward to Ollama]
-    F --> G[Ollama returns response]
+    E --> F[Forward to LLM provider]
+    F --> G[LLM provider returns response]
     G --> H[Create Message\nrole = assistant, content encrypted]
     H --> I[Append to same Conversation]
     I --> J([Conversation.updatedAt refreshed\nviewable in history - FR-019])

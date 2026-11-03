@@ -103,14 +103,15 @@ def find_rule_flags(text: str):
     return flags
 
 
-def main():
-    rows = []
+def load_rows():
     with open(TEST_SET_PATH, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            rows.append(row)
-
+        rows = list(csv.DictReader(f))
     assert len(rows) == 40, f"expected 40 entries, got {len(rows)}"
+    return rows
+
+
+def main():
+    rows = load_rows()
 
     tp = fp = fn = tn = 0
     detail_rows = []

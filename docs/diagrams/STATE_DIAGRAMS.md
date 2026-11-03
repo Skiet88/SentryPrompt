@@ -32,7 +32,7 @@ stateDiagram-v2
     Screening --> Clean: aggregatedVerdict = unflagged
     Screening --> Flagged: aggregatedVerdict = flagged
 
-    Clean --> Forwarded: auto-forwarded to Ollama (FR-008)
+    Clean --> Forwarded: auto-forwarded to LLM provider (FR-008)
 
     state Flagged {
         [*] --> AwaitingDecision: spans highlighted (FR-005)\nexplanation shown (FR-006)
@@ -45,7 +45,7 @@ stateDiagram-v2
     Overridden --> Forwarded: override logged distinctly (NFR-009)
     Cancelled --> Discarded: never forwarded (FR-008)
 
-    Forwarded --> ResponseReceived: Ollama responds (FR-009)
+    Forwarded --> ResponseReceived: LLM provider responds (FR-009)
     ResponseReceived --> [*]
     Discarded --> [*]
     Rejected --> [*]

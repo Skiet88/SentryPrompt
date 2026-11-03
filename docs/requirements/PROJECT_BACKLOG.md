@@ -43,7 +43,7 @@ Architecture (P5) was drafted early, out of sequence, because Assignment 3's bri
 | 12 | Requirements Traceability Matrix (final pass) | P3, P10 | Completed §6 table linking every REQ-ID to a concrete design artefact from Increments 1–9 | §6 Requirements Traceability (20 marks) | ✅ Done: TRACEABILITY_MATRIX.md | — |
 | 13 | Evaluation of Design | P6, P7, P8 | EVALUATION.md — feasibility, scalability, security risk table (now including auth/session security, encryption-at-rest, admin-boundary enforcement), project risk table | §9 Evaluation of Design | ✅ Done: ../evaluation/EVALUATION_OF_DESIGN.md | — |
 | 14 | References & Appendices | — | Min. 5 academic/industry sources (Harvard/APA), Appendix A–C (diagrams, code snippets, tools table) | §11 References, §12 Appendices | 🟡 Partly done: REFERENCES.md exists; Appendices A–C have not been compiled yet | Medium |
-| **16** | **Context-Aware Model Provider Switch** *(new: deployability)* | P4, P5, P7 | Replace the local Ollama/llama3.2 dependency with a hosted, low-cost LLM API so the app works once deployed and without Ollama installed. Behind a provider interface, so the screening code is not tied to a single vendor. Needs updates to ../architecture/ARCHITECTURE.md, ../evaluation/MODEL_ARCHITECTURE.md, NFR-003/NFR-008, and a privacy note: prompts now leave the machine | §3.1.3 Tech Stack, §8.3.1, §9.3 Security | ⬜ Not started | **High**: blocks the context-aware evaluation numbers |
+| **16** | **Context-Aware Model Provider Switch** *(new: deployability)* | P4, P5, P7 | Replace the local Ollama/llama3.2 dependency with a hosted, low-cost LLM API so the app works once deployed and without Ollama installed. Behind a provider interface, so the screening code is not tied to a single vendor. Needs updates to ../architecture/ARCHITECTURE.md, ../evaluation/MODEL_ARCHITECTURE.md, NFR-003/NFR-008, and a privacy note: prompts now leave the machine | §3.1.3 Tech Stack, §8.3.1, §9.3 Security | ✅ Done (design and provider code): `backend/app/llm/` (Groq default, Gemini and Ollama selectable), local redaction (`backend/app/screening/redaction.py`), production privacy guard, 23 unit tests, `run_context_eval.py`. NFR-003/NFR-008 and the architecture, model, diagram and use-case docs updated. Remaining: run the context-aware evaluation with a Groq key | **High**: the evaluation run produces the research numbers |
 | 15 | Final Assembly & Self-Assessment | P10 | Single compiled Design Phase submission document; self-assessment checklist completed honestly | Whole document + rubric checklist (p.12 of template) | ⬜ Not started | Final gate |
 
 ---
@@ -52,7 +52,7 @@ Architecture (P5) was drafted early, out of sequence, because Assignment 3's bri
 
 - **Increment 2 extension:** USE_CASES.md and TEST_CASES.md still cover only FR-001 to FR-012. Use cases and test cases for FR-013 to FR-022 have not been written yet.
 - **Increment 9:** the UI prototype (`src/lib/screening.ts` etc.) lives outside this repository. Its `RULE_PATTERNS` must be updated to match the Revision 2 rules in `run_rule_eval.py` (overlap priority, Luhn check, `bank_account` rule).
-- **Increment 16:** the decision to move off Ollama changes NFR-003 ("entirely local") and NFR-008. Those requirements must be revised, not silently broken.
+- **Increment 8 / 16:** get a free Groq API key, run `python run_context_eval.py`, and copy the context-aware and aggregated results into ../evaluation/EVALUATION_HARNESS_DESIGN.md §3.
 
 ## Sequencing Logic (why this order, not another)
 
