@@ -3,8 +3,9 @@ import json
 
 import pytest
 
-from app.domain import DetectorSource, Verdict
+from app.domain import DetectorSource, EvaluationOutcome, Verdict
 from app.exception import InvalidArgumentError, ProviderError
+from app.repository.memory.evaluation_log_entry_repository import InMemoryEvaluationLogEntryRepository
 from app.screening.classification_parser import ClassificationParser
 from app.screening.context_aware_detector import ContextAwareDetector
 from app.screening.explanation_generator import UNAVAILABLE_NOTICE, ExplanationGenerator
@@ -22,17 +23,20 @@ def llm_flags(*flags: tuple[str, str]) -> str:
     return json.dumps({"flags": [{"category": c, "span": s} for c, s in flags]})
 
 
-def make_service(provider: FakeProvider, timeout: float = 1.0) -> ScreeningService:
+def make_service(
+    provider: FakeProvider, timeout: float = 1.0, log: InMemoryEvaluationLogEntryRepository | None = None
+) -> ScreeningService:
     return ScreeningService(
         rule_detector=RuleBasedDetector(RULES),
         context_detector=ContextAwareDetector(provider, PROMPT, ClassificationParser(), timeout),
         catalog=RULES,
         explainer=ExplanationGenerator(RULES),
+        evaluation_log=log or InMemoryEvaluationLogEntryRepository(),
     )
 
 
-def screen(provider: FakeProvider, text: str, timeout: float = 1.0):
-    return asyncio.run(make_service(provider, timeout).screen(text, "webapp"))
+def screen(provider: FakeProvider, text: str, timeout: float = 1.0, log=None):
+    return asyncio.run(make_service(provider, timeout, log).screen(text, "webapp"))
 
 
 def highlighted(text: str, outcome) -> list[tuple[str, str, DetectorSource]]:
@@ -140,4 +144,38 @@ def test_rejects_detectors_in_the_wrong_slots():
     rule = RuleBasedDetector(RULES)
     context = ContextAwareDetector(FakeProvider(), PROMPT, ClassificationParser())
     with pytest.raises(ValueError):
-        ScreeningService(context, rule, RULES, ExplanationGenerator(RULES))
+        ScreeningService(
+            context, rule, RULES, ExplanationGenerator(RULES), InMemoryEvaluationLogEntryRepository()
+        )
+
+
+# ---- evaluation log (FR-011, NFR-009) ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "provider, text, expected_outcome, expected_category",
+    [
+        (FakeProvider(), "Explain recursion.", EvaluationOutcome.UNFLAGGED, None),
+        (FakeProvider(), "My ID is 9203105800089", EvaluationOutcome.FLAGGED, "SA_ID"),
+        (FakeProvider(error=ProviderError("down")), "Plan my week.", EvaluationOutcome.UNAVAILABLE, None),
+    ],
+    ids=["clean", "flagged", "unavailable"],
+)
+def test_records_content_free_evaluation_entry(provider, text, expected_outcome, expected_category):
+    log = InMemoryEvaluationLogEntryRepository()
+    outcome = screen(provider, text, log=log)
+    [entry] = asyncio.run(log.find_all())
+    assert entry.result_id == outcome.result.result_id
+    assert entry.outcome is expected_outcome
+    expected_id = RULES.category_named(expected_category).category_id if expected_category else None
+    assert entry.category_id == expected_id
+    assert text not in repr(entry)
+
+
+def test_logging_failure_does_not_block_screening():
+    class BrokenLog(InMemoryEvaluationLogEntryRepository):
+        async def save(self, entity):
+            raise RuntimeError("database down")
+
+    outcome = screen(FakeProvider(), "My ID is 9203105800089", log=BrokenLog())
+    assert outcome.result.aggregated_verdict is Verdict.FLAG

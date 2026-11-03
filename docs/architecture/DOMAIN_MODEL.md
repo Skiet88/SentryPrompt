@@ -288,7 +288,7 @@ Each String attribute that takes a fixed set of values is an enum in `backend/ap
 | `TestSetEntry.groundTruthLabel` | FLAG, NO_FLAG |
 | `FlaggedSpan.detectorSource` | rule, context |
 | `DetectionCategory.tier` | rule-based, context-aware |
-| `EvaluationLogEntry.outcome` | flagged, unflagged, override |
+| `EvaluationLogEntry.outcome` | flagged, unflagged, override, unavailable (context-aware check could not complete and nothing was flagged, NFR-015) |
 | `TestSetEntry.groundTruthCategory` | ID_NUMBER, FINANCIAL, CONTACT_LOCATION, MEDICAL, INSTITUTIONAL, CLEAN |
 | `User.role` | student, admin |
 | `User.status` | active, suspended |

@@ -41,7 +41,7 @@ It depends only on interfaces (`Detector`, a category catalog, the explanation g
 | GET | `/api/profile` | View own profile (FR-018) | Yes |
 | PUT | `/api/profile` | Edit own profile (FR-018) | Yes |
 | DELETE | `/api/profile` | Delete own account + all data (FR-020) | Yes |
-| POST | `/api/prompts/screen` | Submit a prompt for screening (FR-001–FR-008) | Yes, verified |
+| POST | `/api/prompts/screen` | Submit a prompt for screening (FR-001–FR-006); rate-limited | Yes, verified. *Until login exists (backend plan, step 6) it is served only outside production, without login: an agreed, temporary exception to SECURITY_RULES.md §2* |
 | GET | `/api/conversations` | List own conversation history (FR-019) | Yes |
 | GET | `/api/conversations/{id}` | View a specific conversation's messages | Yes, owner only |
 | DELETE | `/api/conversations/{id}` | Delete a conversation (FR-020) | Yes, owner only |
@@ -56,49 +56,59 @@ It depends only on interfaces (`Detector`, a category catalog, the explanation g
 
 ## 3. Example Request/Response Schema
 
-### `POST /api/prompts/screen`
+### `POST /api/prompts/screen` (implemented: `backend/app/api/screening_router.py`)
 
-**Request:**
+**Request** (unknown fields are rejected, so a client can never set `userId`, `role` or similar):
 ```json
 {
-  "text": "My student number is 8402215, can you help me write a cover letter?"
+  "text": "My student number is 8402215, can you help me write a cover letter?",
+  "channel": "webapp"
 }
 ```
+`text`: 1–4,000 characters (FR-001). `channel`: `webapp` (default) or `extension`.
 
 **Response (flagged):**
 ```json
 {
-  "screeningResultId": "sr_a1b2c3",
+  "screeningResultId": "5f0c…",
   "aggregatedVerdict": "FLAG",
+  "ruleBasedVerdict": "FLAG",
+  "contextAwareVerdict": "NO_FLAG",
+  "requiresDecision": true,
+  "notice": null,
   "flags": [
     {
-      "category": "ID_NUMBER",
-      "span": "8402215",
+      "category": "STUDENT_NUMBER",
+      "startIndex": 21,
+      "endIndex": 28,
       "detectorSource": "rule",
-      "explanation": "This looks like a student or ID number, which could expose your identity if shared with a third-party AI platform."
+      "explanation": "This looks like a student number. Your student number identifies you at your university, so it counts as personal information."
     }
   ]
 }
 ```
 
-**Response (clean):**
-```json
-{
-  "screeningResultId": "sr_d4e5f6",
-  "aggregatedVerdict": "NO_FLAG",
-  "flags": []
-}
-```
+**Response (context-aware check unavailable, fail closed, NFR-015):** `aggregatedVerdict` is `UNAVAILABLE` (unless a rule flagged something), `requiresDecision` is `true`, and `notice` is *"We couldn't fully check your prompt for sensitive information right now. Review it before sending."*
+
+**Response (clean):** `aggregatedVerdict` `NO_FLAG`, `requiresDecision` `false`, `flags` empty.
+
+**Design changes from the original draft:**
+- Flags return **positions** (`startIndex`, `endIndex`) instead of the flagged text. The client already has the prompt and highlights it by position (FR-005); not repeating sensitive values in responses keeps them out of browser tools and proxy logs (data minimisation).
+- Both detectors' verdicts are returned, along with `requiresDecision` and `notice`, so the UI can show the edit / send anyway / cancel choice for flagged *and* unchecked prompts (FR-007, NFR-015).
 
 ### Error Responses
 
-| Status | Condition | Example |
+| Status | Condition | Body |
 |---|---|---|
-| 400 | Empty prompt submitted (FR-001) | `{"error": "PROMPT_EMPTY", "message": "Prompt text cannot be empty."}` |
-| 401 | Missing/invalid session | `{"error": "UNAUTHENTICATED", "message": "Please log in."}` |
-| 403 | Verified-only or admin-only endpoint accessed without the right role/state | `{"error": "FORBIDDEN", "message": "Email verification required before screening prompts."}` |
-| 404 | Conversation/user not found, or not owned by requester (same response for both, to avoid leaking existence — same principle as FR-015's login error handling) | `{"error": "NOT_FOUND"}` |
-| 429 | *(future work, not required at this scope)* — noted here as a gap, not silently absent: no rate limiting is designed yet for `/api/prompts/screen`, which is a real risk against NFR-010's latency budget under repeated calls | — |
+| 400 | Prompt is only whitespace (FR-001) | `{"error": "invalid_argument", "message": "Prompt text cannot be empty"}` |
+| 401 / 403 | Not logged in / not verified / suspended *(from step 6)* | `{"error": "...", "message": "..."}` |
+| 404 | Endpoint requested in production before login exists | Standard 404 |
+| 413 | Request body over `MAX_REQUEST_BYTES` (64 KB) | `{"error": "payload_too_large", ...}` |
+| 422 | Missing/invalid fields, unknown fields, text over 4,000 characters, malformed JSON. **The submitted values are never echoed back** | `{"error": "invalid_request", "message": "The request is not valid.", "details": [{"field": "text", "problem": "..."}]}` |
+| 429 | Rate limit reached: 10 requests per minute per client, 25 per minute in total (protects the LLM quota). Includes a `Retry-After` header | `{"error": "rate_limited", "message": "Too many requests. Please wait a moment and try again."}` |
+| 500 / 502 | Server or configuration error (e.g. missing LLM key) | Generic message only; details in the server log |
+
+**Rate limiting** is in memory (`backend/app/config/rate_limiter.py`), so limits apply per server process; running several processes would need a shared store behind the same `RateLimiter` interface. Until login exists, clients are identified by their network address (never by a client-supplied forwarded-for header, which is trivially spoofed); step 6 limits per user.
 
 ---
 

@@ -127,6 +127,12 @@ class InMemoryScreeningResultRepository(ScreeningResultRepository):
 
 ---
 
+## 3A. Implementation Note (backend plan, step 4)
+
+The generic interface is implemented as three small capability interfaces in `backend/app/repository/base.py`: `ReadRepository` (`find_by_id`, `find_all`), `WriteRepository` (`save`) and `DeleteRepository` (`delete`). Each repository inherits only what its entity allows, so "append-only" and "immutable" are enforced by the type system: `EvaluationLogEntryRepository` inherits read and write but not delete. Methods are `async` so database-backed implementations never block the server.
+
+`EvaluationLogEntryRepository` is the first one implemented, with an in-memory implementation (bounded to 10,000 entries) used until the database layer (step 5) adds the PostgreSQL implementation behind the same interface.
+
 ## 4. Storage Abstraction: Factory Pattern
 
 **Choice: Factory, not raw Dependency Injection framework.** For a solo project with two backends (in-memory for tests, PostgreSQL via SQLAlchemy for real use), a full DI container (e.g. `dependency-injector`) is more machinery than the problem needs — a small factory function achieves the same swappability with a fraction of the setup.
