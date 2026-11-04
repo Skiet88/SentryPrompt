@@ -8,7 +8,7 @@ import type { AuthGateway } from "@/auth/authGateway";
 export interface Services {
   auth: AuthGateway;
   profile: Pick<ProfileApi, "get">;
-  conversations: Pick<ConversationApi, "list">;
+  conversations: Pick<ConversationApi, "list" | "create" | "get" | "send">;
   /**
    * The address the app was opened with, captured before Supabase reads (and
    * removes) the one-time code from an email link.

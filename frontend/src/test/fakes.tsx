@@ -3,7 +3,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { vi } from "vitest";
 
 import { ApiError } from "@/api/apiClient";
-import type { ConversationSummary, Profile } from "@/api/types";
+import type { ChatMessage, ConversationDetail, ConversationSummary, Profile, Screening, SendResult } from "@/api/types";
 import { routes } from "@/app/routes";
 import { ServicesContext, type Services } from "@/app/services";
 import { AuthFailure, type AuthEvent, type AuthGateway, type AuthSession } from "@/auth/authGateway";
@@ -81,6 +81,65 @@ export class FakeAuthGateway implements AuthGateway {
   }
 }
 
+export const CLEAN: Screening = {
+  screeningResultId: "s1",
+  aggregatedVerdict: "NO_FLAG",
+  ruleBasedVerdict: "NO_FLAG",
+  contextAwareVerdict: "NO_FLAG",
+  requiresDecision: false,
+  notice: null,
+  flags: [],
+};
+
+/** Stands in for the backend's conversation endpoints, keeping chats in memory. */
+export class FakeConversations {
+  chats = new Map<string, ConversationDetail>();
+  sent: { conversationId: string; text: string; sendAnyway: boolean }[] = [];
+  /** Answers for the next send calls, in order; by default every prompt is clean. */
+  nextResults: (SendResult | Error)[] = [];
+  reply = "Here is my answer.";
+  private counter = 0;
+
+  constructor(initial: ConversationSummary[] = []) {
+    for (const c of initial) this.chats.set(c.conversationId, { ...c, messages: [] });
+  }
+
+  list = vi.fn(async (): Promise<ConversationSummary[]> =>
+    [...this.chats.values()].map((c) => ({
+      conversationId: c.conversationId,
+      title: c.title,
+      channel: c.channel,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    })),
+  );
+
+  create = vi.fn(async () => {
+    const id = `00000000-0000-4000-8000-${String(++this.counter).padStart(12, "0")}`;
+    const now = "2026-11-04T10:00:00Z";
+    const chat = { conversationId: id, title: "New conversation", channel: "webapp", createdAt: now, updatedAt: now };
+    this.chats.set(id, { ...chat, messages: [] });
+    return chat;
+  });
+
+  get = vi.fn(async (id: string) => {
+    const chat = this.chats.get(id);
+    if (!chat) throw new ApiError(404, "not_found", "Conversation not found.");
+    return chat;
+  });
+
+  send = vi.fn(async (conversationId: string, text: string, sendAnyway: boolean): Promise<SendResult> => {
+    this.sent.push({ conversationId, text, sendAnyway });
+    const next = this.nextResults.shift();
+    if (next instanceof Error) throw next;
+    if (next) return next;
+    const user: ChatMessage = { messageId: `u${this.sent.length}`, role: "user", content: text, createdAt: "2026-11-04T10:00:01Z" };
+    const assistant: ChatMessage = { messageId: `a${this.sent.length}`, role: "assistant", content: this.reply, createdAt: "2026-11-04T10:00:02Z" };
+    this.chats.get(conversationId)?.messages.push(user, assistant);
+    return { status: "sent", screening: CLEAN, userMessage: user, assistantMessage: assistant };
+  });
+}
+
 export function makeServices(
   overrides: { profile?: Profile | ApiError; conversations?: ConversationSummary[]; landingUrl?: string } = {},
 ) {
@@ -94,10 +153,10 @@ export function makeServices(
         return profileResult;
       }),
     },
-    conversations: { list: vi.fn(async () => overrides.conversations ?? []) },
+    conversations: new FakeConversations(overrides.conversations),
     landingUrl: new URL(overrides.landingUrl ?? "http://localhost:5173/"),
   };
-  return { services, auth };
+  return { services, auth, chats: services.conversations as FakeConversations };
 }
 
 export function renderApp(path: string, services: Services, state?: unknown) {

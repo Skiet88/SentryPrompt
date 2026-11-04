@@ -20,3 +20,40 @@ export interface ConversationSummary {
   createdAt: string;
   updatedAt: string;
 }
+
+export type Verdict = "FLAG" | "NO_FLAG" | "UNAVAILABLE";
+
+export interface Flag {
+  category: string;
+  /** Positions in the submitted text, counted in characters (code points). */
+  startIndex: number;
+  endIndex: number;
+  detectorSource: "rule" | "context";
+  explanation: string;
+}
+
+export interface Screening {
+  screeningResultId: string;
+  aggregatedVerdict: Verdict;
+  ruleBasedVerdict: Verdict;
+  contextAwareVerdict: Verdict;
+  requiresDecision: boolean;
+  notice: string | null;
+  flags: Flag[];
+}
+
+export interface ChatMessage {
+  messageId: string;
+  role: "user" | "assistant";
+  /** Plain text. User messages are stored with detected values replaced, e.g. [REDACTED_SA_ID]. */
+  content: string;
+  createdAt: string;
+}
+
+export interface ConversationDetail extends ConversationSummary {
+  messages: ChatMessage[];
+}
+
+export type SendResult =
+  | { status: "sent"; screening: Screening; userMessage: ChatMessage; assistantMessage: ChatMessage }
+  | { status: "needs_decision"; screening: Screening; userMessage: null; assistantMessage: null };
