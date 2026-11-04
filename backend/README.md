@@ -136,8 +136,15 @@ Set `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `SUPABASE_PUBLISHABLE_KEY` in
 Sending screens the prompt on the server. If it's clean, it goes to the AI
 and both messages are saved. If it's flagged or couldn't be fully checked,
 the answer is `status: "needs_decision"` with the warnings, and nothing is
-sent or saved; send it again with `"sendAnyway": true` to override, or send
-an edited text (screened again). Values found by the rule-based detector
+sent or saved. Then send it again with one of:
+
+- `"hideFlagged": true`: every flagged detail (including health and university
+  information, everywhere it appears) is replaced before the AI sees it;
+  logged as `redacted`;
+- `"sendAnyway": true`: override; logged as `override`;
+- an edited text (screened again).
+
+Not both flags at once (422). Values found by the rule-based detector
 (ID, card and account numbers, phone numbers, emails, addresses) are always
 replaced with placeholders before the AI sees the prompt, even when sent
 anyway, and that redacted text is what gets stored.

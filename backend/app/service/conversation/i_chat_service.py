@@ -24,7 +24,13 @@ class IChatService(ABC):
 
     @abstractmethod
     async def send(
-        self, user: User, conversation_id: str, text: str, *, send_anyway: bool = False
+        self,
+        user: User,
+        conversation_id: str,
+        text: str,
+        *,
+        send_anyway: bool = False,
+        hide_flagged: bool = False,
     ) -> SendOutcome:
         """Screen the prompt; if clean (or sent anyway), send the redacted
         prompt to the AI and save both messages."""

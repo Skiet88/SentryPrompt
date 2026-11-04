@@ -80,7 +80,10 @@ async def send_message(
 ) -> SendMessageResponse:
     """Screen the prompt; if clean, or the student chose to send anyway, the
     prompt (with rule-detected values redacted) goes to the AI and both
-    messages are saved. Otherwise status is "needs_decision" and nothing is
-    sent or saved (FR-007, FR-008)."""
-    outcome = await chat.get().send(user, str(conversation_id), body.text, send_anyway=body.send_anyway)
+    messages are saved; with hideFlagged, every flagged detail is redacted.
+    Otherwise status is "needs_decision" and nothing is sent or saved
+    (FR-007, FR-008)."""
+    outcome = await chat.get().send(
+        user, str(conversation_id), body.text, send_anyway=body.send_anyway, hide_flagged=body.hide_flagged
+    )
     return SendMessageResponse.from_outcome(outcome)

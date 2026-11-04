@@ -192,3 +192,30 @@ def test_no_title_from_a_prompt_that_was_not_sent():
     assert outcome.status is SendStatus.NEEDS_DECISION
     assert outcome.conversation_title is None
     assert run(s.chat.list_conversations(STUDENT))[0].title == "New conversation"
+
+
+# --- Hide flagged details and send ---
+
+
+def test_hide_flagged_hides_every_flagged_detail_before_the_ai_and_in_storage():
+    s = Setup(detector_reply=MEDICAL_REPLY)
+    conversation = run(s.chat.create_conversation(STUDENT, "webapp"))
+    text = "My ID is 9203105800089 and I take sertraline. Is sertraline safe?"
+    outcome = run(s.chat.send(STUDENT, conversation.conversation_id, text, hide_flagged=True))
+
+    assert outcome.status is SendStatus.SENT
+    sent_to_ai = s.llm.chat_received[-1][-1].content
+    assert (
+        sent_to_ai == "My ID is [REDACTED_SA_ID] and I take [REDACTED_MEDICAL]. Is [REDACTED_MEDICAL] safe?"
+    )
+    assert outcome.user_message.content == sent_to_ai
+    assert "sertraline" not in outcome.conversation_title
+    [entry] = run(s.records.log.find_all())
+    assert entry.outcome is EvaluationOutcome.REDACTED
+
+
+def test_send_anyway_still_sends_health_details_as_written():
+    s = Setup(detector_reply=MEDICAL_REPLY)
+    conversation = run(s.chat.create_conversation(STUDENT, "webapp"))
+    run(s.chat.send(STUDENT, conversation.conversation_id, ID_AND_MEDICATION, send_anyway=True))
+    assert s.llm.chat_received[-1][-1].content == "My ID is [REDACTED_SA_ID] and I take sertraline"

@@ -65,3 +65,24 @@ describe("deleting a chat", () => {
     expect(screen.getAllByText("Essay plan").length).toBeGreaterThan(0);
   });
 });
+
+
+describe("sidebar groups", () => {
+  it("puts chats under Today, Yesterday and older headings", async () => {
+    const day = 86_400_000;
+    const at = (daysAgo: number) => new Date(Date.now() - daysAgo * day).toISOString();
+    const made = makeServices({
+      conversations: [
+        { ...chat("t", "Today chat"), updatedAt: at(0) },
+        { ...chat("y", "Yesterday chat"), updatedAt: at(1) },
+        { ...chat("o", "Old chat"), updatedAt: at(90) },
+      ],
+    });
+    made.auth.session = { userId: STUDENT.userId, email: STUDENT.email };
+    renderApp("/", made.services);
+    const nav = await screen.findByRole("navigation", { name: "Recent chats" });
+    expect(within(await within(nav).findByRole("region", { name: "Today" })).getByText("Today chat")).toBeInTheDocument();
+    expect(within(within(nav).getByRole("region", { name: "Yesterday" })).getByText("Yesterday chat")).toBeInTheDocument();
+    expect(within(within(nav).getByRole("region", { name: "Older" })).getByText("Old chat")).toBeInTheDocument();
+  });
+});

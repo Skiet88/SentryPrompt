@@ -46,7 +46,7 @@ describe("chat", () => {
     const [created] = [...chats.chats.keys()];
     expect(router.state.location.pathname).toBe(`/c/${created}`);
     expect(chats.get).not.toHaveBeenCalled(); // same view: nothing reloaded
-    expect(chats.sent).toEqual([{ conversationId: created, text: "Explain recursion simply", sendAnyway: false }]);
+    expect(chats.sent).toEqual([{ conversationId: created, text: "Explain recursion simply", decision: "check" }]);
     const nav = screen.getByRole("navigation", { name: "Recent chats" });
     expect(within(nav).getByText("Explain recursion simply")).toBeInTheDocument();
     expect(screen.getByLabelText("Your prompt")).toHaveValue("");
@@ -62,9 +62,10 @@ describe("chat", () => {
     expect(within(dialog).getByText("9203105800089").tagName).toBe("MARK");
     expect(within(dialog).getByText("sertraline").tagName).toBe("MARK");
     expect(within(dialog).getByText("This looks like an ID number.")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("the ID number will be hidden from the AI");
+    expect(dialog).toHaveTextContent("the ID number and health information will be replaced everywhere they appear");
+    expect(dialog).toHaveTextContent("Send anyway: the ID number will still be hidden.");
     expect(dialog).toHaveTextContent("The health information will be sent as you wrote it.");
-    expect(within(dialog).getByRole("button", { name: "Edit my prompt" })).toHaveFocus();
+    expect(within(dialog).getByRole("button", { name: "Hide details and send" })).toHaveFocus();
     expect(screen.queryByText("Here is my answer.")).not.toBeInTheDocument();
   });
 
@@ -96,7 +97,28 @@ describe("chat", () => {
     expect(await screen.findByText("Noted.")).toBeInTheDocument();
     expect(screen.getAllByTitle("ID number hidden from the AI")).toHaveLength(2); // message and sidebar title
     expect(screen.queryByText(/9203105800089/)).not.toBeInTheDocument();
-    expect(chats.sent.map((s) => s.sendAnyway)).toEqual([false, true]);
+    expect(chats.sent.map((s) => s.decision)).toEqual(["check", "send_anyway"]);
+  });
+
+  it("hides every flagged detail in one click", async () => {
+    const { services, chats } = signedIn();
+    chats.nextResults.push({ status: "needs_decision", screening: FLAGGED, userMessage: null, assistantMessage: null, conversationTitle: null });
+    chats.nextResults.push({
+      status: "sent",
+      screening: FLAGGED,
+      userMessage: { messageId: "u1", role: "user", content: "My ID is [REDACTED_SA_ID] and I take [REDACTED_MEDICAL]", createdAt: "" },
+      assistantMessage: { messageId: "a1", role: "assistant", content: "Happy to help.", createdAt: "" },
+      conversationTitle: "My ID is [REDACTED_SA_ID] and I take [REDACTED_MEDICAL]",
+    });
+    renderApp("/", services);
+    const user = await typeAndSend(PROMPT);
+    await user.click(await screen.findByRole("button", { name: "Hide details and send" }));
+
+    expect(await screen.findByText("Happy to help.")).toBeInTheDocument();
+    expect(chats.sent.map((s) => s.decision)).toEqual(["check", "hide_flagged"]);
+    const log = screen.getByRole("log");
+    expect(within(log).getByTitle("Health information hidden from the AI")).toBeInTheDocument();
+    expect(within(log).queryByText(/sertraline/)).not.toBeInTheDocument();
   });
 
   it("warns when the prompt couldn't be fully checked (fails closed)", async () => {
@@ -113,6 +135,9 @@ describe("chat", () => {
     await typeAndSend("Help with my essay");
     const dialog = await screen.findByRole("dialog", { name: "We couldn't fully check this prompt" });
     expect(dialog).toHaveTextContent("Review it before sending.");
+    // Nothing was flagged, so there is nothing to hide: editing is the default.
+    expect(within(dialog).queryByRole("button", { name: "Hide details and send" })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Edit my prompt" })).toHaveFocus();
   });
 
   it("keeps the prompt and explains errors, such as rate limits", async () => {
@@ -122,6 +147,21 @@ describe("chat", () => {
     await typeAndSend("Hello there");
     expect(await screen.findByRole("alert")).toHaveTextContent("try again in 30 seconds");
     expect(screen.getByLabelText("Your prompt")).toHaveValue("Hello there");
+  });
+
+  it("shows when each message was sent", async () => {
+    const chat = { conversationId: "c1", title: "New conversation", channel: "webapp", createdAt: "", updatedAt: "" };
+    const { services, chats } = signedIn({ conversations: [chat] });
+    chats.chats.get("c1")?.messages.push(
+      { messageId: "u", role: "user", content: "Hello", createdAt: "2026-01-15T09:05:00Z" },
+      { messageId: "a", role: "assistant", content: "Hi!", createdAt: "2026-01-15T09:05:03Z" },
+    );
+    renderApp("/c/c1", services);
+    await screen.findByText("Hi!");
+    const times = screen.getByRole("log").querySelectorAll("time");
+    expect(times).toHaveLength(2);
+    expect(times[0]).toHaveAttribute("datetime", "2026-01-15T09:05:00Z");
+    expect(times[0]?.textContent).toMatch(/Jan/);
   });
 
   it("opens a past chat with its messages", async () => {

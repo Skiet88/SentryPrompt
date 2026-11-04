@@ -1,6 +1,8 @@
 import type { ApiClient } from "./apiClient";
 import type { ConversationDetail, ConversationSummary, SendResult } from "./types";
 
+export type SendDecision = "check" | "send_anyway" | "hide_flagged";
+
 /** Longest prompt the backend accepts, in characters (FR-001). */
 export const MAX_PROMPT_LENGTH = 4000;
 
@@ -29,10 +31,15 @@ export class ConversationApi {
     return this.client.delete(`/api/conversations/${encodeURIComponent(conversationId)}`);
   }
 
-  send(conversationId: string, text: string, sendAnyway: boolean): Promise<SendResult> {
+  /**
+   * decision: "check" for a normal send; after a warning, "send_anyway" or
+   * "hide_flagged" (every flagged detail is replaced before the AI sees it).
+   */
+  send(conversationId: string, text: string, decision: SendDecision): Promise<SendResult> {
     return this.client.post<SendResult>(`/api/conversations/${encodeURIComponent(conversationId)}/messages`, {
       text,
-      sendAnyway,
+      sendAnyway: decision === "send_anyway",
+      hideFlagged: decision === "hide_flagged",
     });
   }
 }

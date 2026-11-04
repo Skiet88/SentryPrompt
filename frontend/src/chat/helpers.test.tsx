@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { Flag } from "@/api/types";
-import { chatDate } from "@/layout/Sidebar";
+import { chatGroup, messageTime } from "@/lib/dates";
 
 import { categoryLabel } from "./categories";
 import { characterCount, highlightSegments } from "./highlight";
@@ -107,12 +107,23 @@ describe("SafeMarkdown", () => {
   });
 });
 
-describe("chatDate", () => {
+describe("dates", () => {
   const now = new Date("2026-11-04T15:00:00");
-  it("says today, yesterday, or the date", () => {
-    expect(chatDate("2026-11-04T09:30:00", now)).toMatch(/^Today /);
-    expect(chatDate("2026-11-03T20:00:00", now)).toBe("Yesterday");
-    expect(chatDate("2026-10-01T12:00:00", now)).toMatch(/1/);
-    expect(chatDate("not a date", now)).toBe("");
+
+  it("shows message times briefly, with the day only when it isn't today", () => {
+    expect(messageTime("2026-11-04T09:30:00", now)).toMatch(/^\d{2}:\d{2}/);
+    expect(messageTime("2026-11-03T20:00:00", now)).toMatch(/^Yesterday /);
+    expect(messageTime("2026-10-01T12:00:00", now)).toMatch(/1.*Oct|Oct.*1/);
+    expect(messageTime("2025-10-01T12:00:00", now)).toMatch(/2025/);
+    expect(messageTime("not a date", now)).toBe("");
+  });
+
+  it("groups chats like other chat apps", () => {
+    expect(chatGroup("2026-11-04T01:00:00", now)).toBe("Today");
+    expect(chatGroup("2026-11-03T23:00:00", now)).toBe("Yesterday");
+    expect(chatGroup("2026-10-30T12:00:00", now)).toBe("Previous 7 days");
+    expect(chatGroup("2026-10-15T12:00:00", now)).toBe("Previous 30 days");
+    expect(chatGroup("2026-01-01T12:00:00", now)).toBe("Older");
+    expect(chatGroup("garbage", now)).toBe("Older");
   });
 });

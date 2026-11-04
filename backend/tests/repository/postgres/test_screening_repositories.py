@@ -65,3 +65,11 @@ def test_clean_result_without_spans(engine):
     entry = build_evaluation_log_entry(result.result_id, "unflagged")
     run(PostgresScreeningRecordWriter(engine).record(result, [], entry))
     assert run(PostgresEvaluationLogEntryRepository(engine).find_all()) == [entry]
+
+
+def test_evaluation_log_accepts_the_redacted_outcome(engine):
+    result, spans, _ = records()
+    entry = build_evaluation_log_entry(result.result_id, "redacted", CATEGORY)
+    run(PostgresScreeningRecordWriter(engine).record(result, spans, entry))
+    stored = run(PostgresEvaluationLogEntryRepository(engine).find_by_id(entry.log_id))
+    assert stored is not None and stored.outcome.value == "redacted"
