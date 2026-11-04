@@ -44,9 +44,13 @@ The backend must allow `http://localhost:5173` in `CORS_ORIGINS` (the default).
 ## Chat
 
 - A new chat is created when the first prompt is sent. Every prompt is screened
-  by the backend; if something is found, a dialog highlights it, explains why
-  in plain language, and says what the AI will see. **Edit my prompt** is the
-  main button; **Send anyway** is possible.
+  by the backend; if something is found, a dialog highlights every copy of it,
+  explains why in plain language, and says what the AI will see.
+  **Hide details and send** is the main button: one click hides every flagged
+  detail, however often it appears. **Send anyway** and **Edit my prompt**
+  are still possible.
+- Each message shows when it was sent; the sidebar groups chats under Today,
+  Yesterday, Previous 7 days, Previous 30 days and Older.
 - Values the detector found (ID, card and account numbers, contact details) are
   replaced before the AI sees them, even when sent anyway. Sent prompts show
   each replaced value as a small "hidden" badge.

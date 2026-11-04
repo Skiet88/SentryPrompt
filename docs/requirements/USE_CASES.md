@@ -126,6 +126,7 @@ flowchart LR
 - **Actor:** Student
 - **Precondition:** UC3 has occurred.
 - **Postcondition:** Original (flagged) prompt is forwarded to LLM provider despite the flag; the override is logged distinctly from an unflagged pass-through.
+- **Alternative (hide details and send):** Student selects "Hide details and send" → every flagged detail, wherever it appears, is replaced with a placeholder → the evaluation log records `redacted` → the redacted prompt is forwarded → proceed to UC7.
 - **Basic Flow:** Student selects "Send Anyway" → system logs an explicit override event (NFR-009 still applies — content itself is not logged, only that an override occurred) → prompt forwarded to LLM provider → proceed to UC7.
 
 ### UC6 — Cancel Submission

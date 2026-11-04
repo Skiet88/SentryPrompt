@@ -177,3 +177,28 @@ def test_delete_conversation():
     cid = create(client)
     assert client.delete(f"{BASE}/{cid}", headers=bearer()).status_code == 204
     assert client.get(f"{BASE}/{cid}", headers=bearer()).status_code == 404
+
+
+def test_hide_flagged_sends_with_every_flagged_detail_hidden():
+    client, llm = make()
+    cid = create(client)
+    body = client.post(
+        f"{BASE}/{cid}/messages",
+        json={"text": "My ID is 9203105800089, help me fill in a form", "hideFlagged": True},
+        headers=bearer(),
+    ).json()
+    assert body["status"] == "sent"
+    assert body["userMessage"]["content"] == "My ID is [REDACTED_SA_ID], help me fill in a form"
+    assert "9203105800089" not in llm.chat_received[-1][-1].content
+
+
+def test_send_anyway_and_hide_flagged_cannot_both_be_chosen():
+    client, llm = make()
+    cid = create(client)
+    response = client.post(
+        f"{BASE}/{cid}/messages",
+        json={"text": "hi", "sendAnyway": True, "hideFlagged": True},
+        headers=bearer(),
+    )
+    assert response.status_code == 422
+    assert llm.chat_received == []

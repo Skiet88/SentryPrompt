@@ -3,7 +3,9 @@
 - Every prompt is screened on the server: the client can't skip screening
   or claim a prompt was clean (FR-008).
 - Flagged or unchecked prompts are not sent unless the student chooses
-  "send anyway" (FR-007); "edit" is simply sending a new text, which is
+  "send anyway", or "hide flagged details and send", which replaces EVERY
+  flagged detail (including health and university information) before the
+  AI sees the prompt (FR-007); "edit" is simply sending a new text, which is
   screened again (UC4); "cancel" is not sending.
 - Values found by the rule-based detector (ID, card and account numbers,
   phone numbers, emails, addresses) are ALWAYS replaced with placeholders
@@ -82,19 +84,29 @@ class ChatService(IChatService):
             raise NotFoundError(NOT_FOUND)
 
     async def send(
-        self, user: User, conversation_id: str, text: str, *, send_anyway: bool = False
+        self,
+        user: User,
+        conversation_id: str,
+        text: str,
+        *,
+        send_anyway: bool = False,
+        hide_flagged: bool = False,
     ) -> SendOutcome:
         conversation = await self._owned(user, conversation_id)
-        screening = await self._screening.screen(text, conversation.channel, send_anyway=send_anyway)
-        if screening.requires_student_decision and not send_anyway:
+        screening = await self._screening.screen(
+            text, conversation.channel, send_anyway=send_anyway, hide_flagged=hide_flagged
+        )
+        if screening.requires_student_decision and not (send_anyway or hide_flagged):
             return SendOutcome(SendStatus.NEEDS_DECISION, screening)
 
-        rule_spans = [
+        # Rule-detected values are always hidden; with hide_flagged, the
+        # context-aware flags (health, university matters) are hidden too.
+        hidden = [
             (e.span.start_index, e.span.end_index, e.category_name)
             for e in screening.spans
-            if e.span.detector_source is DetectorSource.RULE
+            if hide_flagged or e.span.detector_source is DetectorSource.RULE
         ]
-        safe_text = redact_with_map(text, rule_spans).text
+        safe_text = redact_with_map(text, hidden).text
         history = await self._messages.list_for_conversation(conversation, limit=self._history_limit)
         reply = await self._ask_ai(
             [*(ChatMessage(m.role, m.content) for m in history), ChatMessage(MessageRole.USER, safe_text)]

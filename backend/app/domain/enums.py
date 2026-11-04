@@ -61,6 +61,9 @@ class EvaluationOutcome(StrEnum):
     UNFLAGGED = "unflagged"
     OVERRIDE = "override"
     UNAVAILABLE = "unavailable"
+    # The student chose "hide flagged details and send": every flagged span
+    # was replaced before the prompt reached the AI.
+    REDACTED = "redacted"
 
 
 class TestSetCategory(StrEnum):

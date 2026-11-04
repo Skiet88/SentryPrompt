@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 
 import { ApiError } from "@/api/apiClient";
+import type { SendDecision } from "@/api/conversationApi";
 import type { ChatMessage, ConversationSummary } from "@/api/types";
 import { useServices } from "@/app/services";
 import { useProfile } from "@/auth/authState";
@@ -78,7 +79,7 @@ export function ChatView({
       .catch((e: unknown) => setLoad(e instanceof ApiError && e.status === 404 ? "not_found" : "failed"));
   }, [conversations, initialId]);
 
-  async function send(text: string, sendAnyway: boolean) {
+  async function send(text: string, decision: SendDecision) {
     setError(undefined);
     setDecision(null);
     setDraft("");
@@ -94,7 +95,7 @@ export function ChatView({
           void navigate(`/c/${encodeURIComponent(current.conversationId)}`);
         }
       }
-      const result = await conversations.send(current.conversationId, text, sendAnyway);
+      const result = await conversations.send(current.conversationId, text, decision);
       if (result.status === "needs_decision") {
         setDecision({ text, screening: result.screening });
       } else {
@@ -144,7 +145,7 @@ export function ChatView({
       <Composer
         value={draft}
         onChange={setDraft}
-        onSend={() => void send(draft.trim(), false)}
+        onSend={() => void send(draft.trim(), "check")}
         busy={pending !== null}
         disabledReason={disabledReason}
         focusSignal={focusSignal}
@@ -155,7 +156,8 @@ export function ChatView({
     <DecisionDialog
       decision={decision}
       onEdit={editPrompt}
-      onSendAnyway={() => decision && void send(decision.text, true)}
+      onSendAnyway={() => decision && void send(decision.text, "send_anyway")}
+      onHideAndSend={() => decision && void send(decision.text, "hide_flagged")}
     />
   );
 

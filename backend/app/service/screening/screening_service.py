@@ -26,6 +26,7 @@ from app.domain import (
     SourceChannel,
     Verdict,
 )
+from app.exception import InvalidArgumentError
 from app.factory.evaluation_log_entry_factory import build_evaluation_log_entry
 from app.factory.flagged_span_factory import build_flagged_span
 from app.factory.prompt_factory import build_prompt
@@ -62,8 +63,15 @@ class ScreeningService(IScreeningService):
         self._records = records
 
     async def screen(
-        self, raw_text: str, channel: SourceChannel | str, *, send_anyway: bool = False
+        self,
+        raw_text: str,
+        channel: SourceChannel | str,
+        *,
+        send_anyway: bool = False,
+        hide_flagged: bool = False,
     ) -> ScreeningOutcome:
+        if send_anyway and hide_flagged:
+            raise InvalidArgumentError("Choose either send anyway or hide flagged details, not both.")
         prompt = build_prompt(raw_text, channel, status=PromptStatus.SCREENING)
 
         rule_result = await self._rule_detector.detect(prompt.raw_text)
@@ -81,10 +89,12 @@ class ScreeningService(IScreeningService):
             spans=tuple(sorted(spans, key=lambda e: (e.span.start_index, e.span.end_index))),
             notice=None if context_result.completed else self._explainer.unavailable_notice(),
         )
-        await self._record(outcome, send_anyway)
+        await self._record(outcome, send_anyway, hide_flagged)
         return outcome
 
-    async def _record(self, outcome: ScreeningOutcome, send_anyway: bool = False) -> None:
+    async def _record(
+        self, outcome: ScreeningOutcome, send_anyway: bool = False, hide_flagged: bool = False
+    ) -> None:
         """Content-free by construction: none of the saved records has a field
         for prompt text. A storage failure never blocks the student's screening."""
         result: ScreeningResult = outcome.result
@@ -92,8 +102,14 @@ class ScreeningService(IScreeningService):
             entry_outcome, category_id = EvaluationOutcome.UNFLAGGED, None
         elif outcome.spans:
             # The first flagged category in the prompt; every span is kept
-            # individually as a FlaggedSpan. "Send anyway" is an override.
-            entry_outcome = EvaluationOutcome.OVERRIDE if send_anyway else EvaluationOutcome.FLAGGED
+            # individually as a FlaggedSpan. "Send anyway" is an override;
+            # "hide flagged details and send" is recorded as redacted.
+            if hide_flagged:
+                entry_outcome = EvaluationOutcome.REDACTED
+            elif send_anyway:
+                entry_outcome = EvaluationOutcome.OVERRIDE
+            else:
+                entry_outcome = EvaluationOutcome.FLAGGED
             category_id = outcome.spans[0].span.category_id
         else:
             entry_outcome, category_id = EvaluationOutcome.UNAVAILABLE, None

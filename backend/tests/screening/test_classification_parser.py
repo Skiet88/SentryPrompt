@@ -46,3 +46,17 @@ def test_drops_invalid_flags_but_keeps_valid_ones():
         }
     )
     assert [TEXT[s.start : s.end] for s in parse(raw).spans] == ["sertraline"]
+
+
+def test_flags_every_occurrence_once():
+    text = "Sertraline makes me tired; is sertraline safe with coffee?"
+    raw = json.dumps(
+        {
+            "flags": [
+                {"category": "MEDICAL", "span": "sertraline"},
+                {"category": "MEDICAL", "span": "Sertraline"},
+            ]
+        }
+    )
+    result = parser.parse(raw, text, provider="groq", model="m", prompt_version="v1")
+    assert [text[s.start : s.end] for s in result.spans] == ["Sertraline", "sertraline"]

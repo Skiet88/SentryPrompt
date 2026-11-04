@@ -67,6 +67,9 @@ flowchart TD
     B -- Edit --> C[Student modifies flagged text]
     C --> D[Resubmit]
     D --> E([Re-enters screening from scratch\n- UC1/UC2 step 3, no shortcut])
+    B -- Hide details and send --> R[Replace every flagged detail\nwherever it appears]
+    R --> S[Log redacted event\ncontent NOT logged - NFR-009]
+    S --> G
     B -- Send Anyway --> F[Log override event\ncontent NOT logged - NFR-009]
     F --> G[Forward original prompt to LLM provider]
     G --> H([Continue to UC7 - View AI Response])

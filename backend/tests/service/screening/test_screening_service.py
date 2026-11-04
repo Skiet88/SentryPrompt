@@ -195,3 +195,19 @@ def test_send_anyway_is_logged_as_override():
     )
     [entry] = asyncio.run(records.log.find_all())
     assert entry.outcome is EvaluationOutcome.OVERRIDE
+
+
+def test_hide_flagged_is_logged_as_redacted():
+    records = InMemoryScreeningRecordWriter()
+    asyncio.run(
+        make_service(FakeProvider(), log=records).screen(
+            "My ID is 9203105800089", "webapp", hide_flagged=True
+        )
+    )
+    [entry] = asyncio.run(records.log.find_all())
+    assert entry.outcome is EvaluationOutcome.REDACTED
+
+
+def test_send_anyway_and_hide_flagged_together_are_rejected():
+    with pytest.raises(InvalidArgumentError):
+        asyncio.run(make_service(FakeProvider()).screen("hi", "webapp", send_anyway=True, hide_flagged=True))

@@ -3,6 +3,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { vi } from "vitest";
 
 import { ApiError } from "@/api/apiClient";
+import type { SendDecision } from "@/api/conversationApi";
 import type { ChatMessage, ConversationDetail, ConversationSummary, Profile, Screening, SendResult } from "@/api/types";
 import { routes } from "@/app/routes";
 import { ServicesContext, type Services } from "@/app/services";
@@ -94,7 +95,7 @@ export const CLEAN: Screening = {
 /** Stands in for the backend's conversation endpoints, keeping chats in memory. */
 export class FakeConversations {
   chats = new Map<string, ConversationDetail>();
-  sent: { conversationId: string; text: string; sendAnyway: boolean }[] = [];
+  sent: { conversationId: string; text: string; decision: SendDecision }[] = [];
   /** Answers for the next send calls, in order; by default every prompt is clean. */
   nextResults: (SendResult | Error)[] = [];
   reply = "Here is my answer.";
@@ -132,8 +133,8 @@ export class FakeConversations {
     if (!this.chats.delete(id)) throw new ApiError(404, "not_found", "Conversation not found.");
   });
 
-  send = vi.fn(async (conversationId: string, text: string, sendAnyway: boolean): Promise<SendResult> => {
-    this.sent.push({ conversationId, text, sendAnyway });
+  send = vi.fn(async (conversationId: string, text: string, decision: SendDecision): Promise<SendResult> => {
+    this.sent.push({ conversationId, text, decision });
     const next = this.nextResults.shift();
     if (next instanceof Error) throw next;
     if (next) return next;

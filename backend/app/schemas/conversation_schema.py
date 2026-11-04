@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from app.domain import Conversation, Message, MessageRole, SourceChannel
 from app.factory.conversation_factory import MAX_TITLE_LENGTH
@@ -63,6 +63,15 @@ class SendMessageRequest(_CamelModel):
     text: str = Field(min_length=1, max_length=MAX_PROMPT_LENGTH)
     # The student saw the warning and chose "send anyway" (FR-007).
     send_anyway: bool = False
+    # The student chose "hide flagged details and send": every flagged
+    # detail is replaced before the AI sees the prompt.
+    hide_flagged: bool = False
+
+    @model_validator(mode="after")
+    def _one_decision(self) -> SendMessageRequest:
+        if self.send_anyway and self.hide_flagged:
+            raise ValueError("choose either sendAnyway or hideFlagged, not both")
+        return self
 
 
 class SendMessageResponse(_CamelModel):
