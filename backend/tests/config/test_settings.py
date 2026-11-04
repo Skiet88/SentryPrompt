@@ -66,6 +66,7 @@ def test_rate_limit_defaults():
     settings = make()
     assert (settings.screening_rate_limit_per_client, settings.screening_rate_limit_global) == (10, 25)
     assert (settings.auth_rate_limit_per_client, settings.profile_rate_limit_per_user) == (60, 30)
+    assert settings.admin_rate_limit_per_user == 30
 
 
 @pytest.mark.parametrize("missing", ["supabase_url", "supabase_secret_key"])
@@ -85,6 +86,7 @@ def test_supabase_secret_key_is_secret():
         {"screening_rate_limit_per_client": 0},
         {"screening_rate_limit_global": 0},
         {"rate_limit_window_seconds": 0},
+        {"admin_rate_limit_per_user": 0},
     ],
 )
 def test_rate_limit_settings_must_be_positive(overrides):
@@ -113,3 +115,25 @@ def test_no_setting_value_is_ever_echoed_in_errors():
         make(groq_api_key="gsk_secret_value_123", context_detector_timeout_seconds="not-a-number")
     assert "gsk_secret_value_123" not in str(caught.value)
     assert "not-a-number" not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    "url, hint",
+    [
+        ("https://supabase.com/dashboard/project/abcd", "dashboard"),
+        ("https://app.supabase.com/project/abcd", "dashboard"),
+        ("https://abcd.supabase.co/rest/v1", "path"),
+        ("https://abcd.supabase.co/auth/v1/", "path"),
+        ("https://abcd.supabase.co?x=1", "path"),
+        ("http://abcd.supabase.co", "https"),
+        ("abcd.supabase.co", "https"),
+    ],
+)
+def test_supabase_url_must_be_the_bare_project_url(url, hint):
+    with pytest.raises(ValidationError, match=hint):
+        make(supabase_url=url)
+
+
+@pytest.mark.parametrize("url", ["https://abcd.supabase.co", " https://abcd.supabase.co/ ", ""])
+def test_supabase_project_url_accepted(url):
+    assert make(supabase_url=url).supabase_url == url.strip().rstrip("/")

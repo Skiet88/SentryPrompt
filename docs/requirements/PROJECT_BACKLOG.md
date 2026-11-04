@@ -53,8 +53,6 @@ Architecture (P5) was drafted early, out of sequence, because Assignment 3's bri
 
 - **Before real users (deferred Supabase settings):** the development Supabase project is set up without CAPTCHA (docs/setup/SUPABASE_SETUP.md step 4) and without custom email sending (step 5). Both can be set up for free (Cloudflare Turnstile; Resend free tier) and **must** be done before any real student registers, together with a rate-limit review, exact redirect URLs, and a separate deployed project. Until then, sign-up testing uses the developer's own email address (Supabase's built-in email only delivers to project team members).
 
-- **Suspension ban in Supabase (admin step):** suspending an account currently blocks it in the backend (403 on every request). The admin step adds the Supabase ban so a suspended student cannot log in at all (AUTH_DESIGN.md §0.1, decision 2).
-
 - **Docker:** the backend `Dockerfile` (ARCHITECTURE.md, Setup & Deployment) is added only once the application runs end to end, so that any container problem is clearly separate from application problems during development.
 
 - **Increment 2 extension:** USE_CASES.md and TEST_CASES.md still cover only FR-001 to FR-012. Use cases and test cases for FR-013 to FR-022 have not been written yet.

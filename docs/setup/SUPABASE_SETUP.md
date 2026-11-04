@@ -101,6 +101,10 @@ chat, documents, screenshots, Git, or any file other than `backend/.env`.
 2. Click **Data API** (called **API** on some projects).
 3. Copy the **Project URL**, e.g. `https://abcdefgh.supabase.co`.
 
+   Not the address in your browser's address bar (`https://supabase.com/dashboard/...`),
+   and nothing after `.supabase.co` (no `/rest/v1`). The backend refuses to
+   start with either mistake and says which one it is.
+
 ### Value 2: Secret key (SECRET)
 
 1. In **Project Settings**, click **API Keys**.
@@ -221,8 +225,11 @@ The API now requires a login. Until the frontend exists, test with a token:
    ```
    uv run python scripts/dev_login.py
    ```
-3. Open http://localhost:8000/docs, click **Authorize**, paste the token,
-   and try `GET /api/profile` and `POST /api/prompts/screen`.
+   The token is copied to your clipboard, not shown on screen (so it doesn't
+   end up in your terminal history or a screenshot). Add `--print` only if
+   your computer has no clipboard tool.
+3. Open http://localhost:8000/docs, click **Authorize**, paste the token
+   (Ctrl+V), and try `GET /api/profile` and `POST /api/prompts/screen`.
 
 The token works like a password for about an hour: don't share it, paste it
 into chats or save it in files. Without a token, the API answers 401.
@@ -246,6 +253,11 @@ The `profiles` table is created in step 6B. After that:
 
 There is deliberately no way to do this from inside the application
 (AUTH_DESIGN.md §0.1).
+
+To try the admin endpoints, log in as this account with `dev_login.py`,
+authorize in http://localhost:8000/docs, and use the **admin** section
+(`GET /api/admin/users`, suspend, reinstate, `GET /api/admin/audit-log`).
+A student account gets 403 on all of them.
 
 ## 8. Checklist
 

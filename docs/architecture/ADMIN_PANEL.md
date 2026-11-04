@@ -67,11 +67,46 @@ AUTH_DESIGN.md §6 already establishes that every admin endpoint checks `User.ro
 
 ---
 
+## 5A. Backend Implementation (step 8)
+
+| Endpoint | Body / parameters | Answer |
+|---|---|---|
+| `GET /api/admin/users` | `page` (from 1), `perPage` (1 to 100, default 50) | Accounts: `userId`, `email`, `emailVerified`, `displayName`, `role`, `status`, `createdAt` |
+| `POST /api/admin/users/{id}/suspend` | optional `{"reason": "..."}` (at most 500 characters; no other field accepted) | `userId`, `status`, `auditLogId`, `loginBlockUpdated` |
+| `POST /api/admin/users/{id}/reinstate` | same as suspend | same as suspend |
+| `GET /api/admin/audit-log` | `limit` (1 to 100, default 50), `offset` | Entries, newest first: `logId`, `adminUserId`, `targetUserId`, `actionType`, `timestamp`, `details` |
+
+Rules enforced by the backend (not only the UI):
+
+- **Admins only.** Every route needs a verified, active account whose role in
+  our `profiles` table is `admin`. Everyone else gets 403; no login gets 401.
+  Requests are rate-limited per admin (`ADMIN_RATE_LIMIT_PER_USER`).
+- **No self-action, no admin targets.** An admin cannot suspend or reinstate
+  their own account (400), or suspend another admin (403 `target_is_admin`).
+  Roles change only by hand in the database (setup guide, step 7).
+- **Always audited.** The status change and its audit entry are written in
+  one database transaction, so there is never an unaudited action. The audit
+  log cannot be changed or deleted (database triggers) and survives account
+  deletion.
+- **Login block.** After the database change, the account is banned in
+  Supabase Auth (suspend) or unbanned (reinstate). If Supabase can't be
+  reached, the answer says `loginBlockUpdated: false`: the account is still
+  blocked by the backend's own status check on every request, and repeating
+  the action retries the ban without writing a second audit entry. When the
+  account already has the requested status, `auditLogId` is `null`.
+- **No content access (NFR-013).** `AdminService` is built only from the
+  identity provider, `UserRepository` and `AdminAuditLogRepository`. A test
+  fails the build if any admin module imports anything about conversations
+  or messages, and admins get 404 on other people's conversations like
+  everyone else.
+
+---
+
 ## 6. What This Document Does Not Cover
 
 - **Admin account creation/promotion** — the first admin is promoted by hand with one SQL statement in the Supabase dashboard (../setup/SUPABASE_SETUP.md, step 7). The application has deliberately no endpoint or screen that changes a user's role (AUTH_DESIGN.md §0.1), so admin promotion cannot be abused through the application.
 - **Bulk actions** (e.g. suspend multiple accounts at once) — not required by FR-021 as written, not designed here.
-- **Audit log filtering/search** — the current design is a flat, reverse-chronological table sufficient for FR-022's requirement; pagination/filtering would be a build-phase refinement once real usage volume exists, not a design-phase requirement.
+- **Audit log filtering/search** — the current design is a flat, reverse-chronological table sufficient for FR-022's requirement, with simple `limit`/`offset` pagination; filtering would be a later refinement once real usage volume exists.
 
 ## Links
 - [../requirements/REQUIREMENTS.md](../requirements/../requirements/REQUIREMENTS.md)

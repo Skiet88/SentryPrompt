@@ -3,15 +3,20 @@
 Usage (from backend/):  uv run python scripts/dev_login.py
 
 Signs in with your own test account (email + password, typed here and not
-shown) and prints an access token to paste into the Swagger UI's Authorize
-button at http://localhost:8000/docs. The token works like a password for
-about an hour: don't share it, paste it into chats, or save it in files.
-Refuses to run when APP_ENV=production.
+shown) and copies the access token to your clipboard, ready to paste into
+the Swagger UI's Authorize button at http://localhost:8000/docs. The token is
+not printed, so it doesn't end up in terminal history or screenshots. If no
+clipboard tool is found, run with --print to show it instead.
+
+The token works like a password for about an hour: don't share it, paste it
+into chats, or save it in files. Refuses to run when APP_ENV=production.
 """
 
 from __future__ import annotations
 
 import getpass
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -20,6 +25,22 @@ import httpx
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.config.settings import Settings
+
+CLIPBOARD_COMMANDS = (
+    ["clip"],  # Windows
+    ["pbcopy"],  # macOS
+    ["wl-copy"],  # Linux (Wayland)
+    ["xclip", "-selection", "clipboard"],  # Linux (X11)
+)
+
+
+def copy_to_clipboard(value: str) -> bool:
+    for command in CLIPBOARD_COMMANDS:
+        if shutil.which(command[0]):
+            # Fixed command from the list above; the token goes in via stdin.
+            result = subprocess.run(command, input=value.encode(), check=False)  # noqa: S603
+            return result.returncode == 0
+    return False
 
 
 def main() -> int:
@@ -57,9 +78,15 @@ def main() -> int:
         return 1
 
     data = response.json()
-    print("\nAccess token (valid for about", data.get("expires_in", 3600) // 60, "minutes):\n")
-    print(data["access_token"])
-    print("\nIn http://localhost:8000/docs click Authorize and paste the token above.")
+    token, minutes = data["access_token"], data.get("expires_in", 3600) // 60
+    if "--print" in sys.argv[1:]:
+        print(f"\nAccess token (valid for about {minutes} minutes):\n\n{token}\n")
+    elif copy_to_clipboard(token):
+        print(f"\nToken copied to your clipboard (valid for about {minutes} minutes).")
+    else:
+        print("\nNo clipboard tool found. Run again with --print to show the token.")
+        return 1
+    print("In http://localhost:8000/docs click Authorize, paste with Ctrl+V, then Authorize.")
     return 0
 
 

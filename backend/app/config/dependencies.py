@@ -11,6 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.domain import User
 from app.exception import AuthenticationError, RateLimitExceededError
+from app.service.admin.i_admin_service import IAdminService
 from app.service.auth.i_auth_service import IAuthService
 from app.service.conversation.i_chat_service import IChatService
 from app.service.screening.i_screening_service import IScreeningService
@@ -58,6 +59,11 @@ def get_chat_service(request: Request) -> Provider[IChatService]:
     return provider
 
 
+def get_admin_service(request: Request) -> Provider[IAdminService]:
+    provider: Provider[IAdminService] = request.app.state.admin_service
+    return provider
+
+
 def get_auth_service(request: Request) -> Provider[IAuthService]:
     provider: Provider[IAuthService] = request.app.state.auth_service
     return provider
@@ -101,4 +107,10 @@ def enforce_screening_rate_limit(request: Request, user: Annotated[User, Depends
 
 def enforce_profile_rate_limit(request: Request, user: Annotated[User, Depends(get_current_user)]) -> None:
     decision = request.app.state.profile_rate_limiter.hit(user.user_id)
+    _limit(decision.allowed, decision.retry_after_seconds)
+
+
+def enforce_admin_rate_limit(request: Request, user: Annotated[User, Depends(get_current_user)]) -> None:
+    """Counts every logged-in request to /api/admin, including refused ones."""
+    decision = request.app.state.admin_rate_limiter.hit(user.user_id)
     _limit(decision.allowed, decision.retry_after_seconds)

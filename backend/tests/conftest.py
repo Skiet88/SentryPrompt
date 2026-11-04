@@ -111,6 +111,8 @@ class FakeIdentityProvider:
         self.unavailable = False
         self.deleted: list[str] = []
         self.received_tokens: list[str] = []
+        self.banned: dict[str, bool] = {}
+        self.ban_unavailable = False
 
     async def verify_token(self, access_token: str):
         from app.exception import AuthenticationError, AuthUnavailableError
@@ -128,6 +130,23 @@ class FakeIdentityProvider:
         if self.unavailable:
             raise AuthUnavailableError("The account could not be deleted right now.")
         self.deleted.append(user_id)
+
+    async def list_users(self, page: int, per_page: int):
+        from app.exception import AuthUnavailableError
+        from app.service.auth.identity import IdentityRecord
+
+        if self.unavailable:
+            raise AuthUnavailableError("Accounts could not be listed right now.")
+        records = [IdentityRecord(i.user_id, i.email, i.email_verified) for i in self.identities.values()]
+        start = (page - 1) * per_page
+        return records[start : start + per_page]
+
+    async def set_banned(self, user_id: str, banned: bool) -> None:
+        from app.exception import AuthUnavailableError
+
+        if self.unavailable or self.ban_unavailable:
+            raise AuthUnavailableError("The login block could not be updated right now.")
+        self.banned[user_id] = banned
 
 
 def make_auth_service():
