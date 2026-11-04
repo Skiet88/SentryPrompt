@@ -26,10 +26,11 @@ The service is a Facade: one call, `screen(raw_text, channel)`, runs the whole p
 4. The context-aware detector runs on the **redacted** text, with a time limit; a timeout, provider error or unreadable reply gives `UNAVAILABLE` (fail closed, NFR-015).
 5. `build_screening_result()` records both verdicts separately and computes the aggregate (FR-004).
 6. Every span is mapped back to the student's original text (context-aware spans were found in the redacted text) and explained in plain language (FR-005, FR-006).
+7. The result, its flagged spans and a content-free evaluation log entry are saved together through `ScreeningRecordWriter` (one transaction, REPOSITORY_DESIGN.md §3B). A storage failure is logged and never blocks the student's screening.
 
 It depends only on interfaces (`Detector`, a category catalog, the explanation generator), injected by the composition root (`backend/app/config/composition.py`). It returns a `ScreeningOutcome` holding the `ScreeningResult`, the explained `FlaggedSpan`s and, when the context check could not complete, a notice for the student. The outcome contains no prompt text.
 
-**Revision note:** an earlier design ran both detectors concurrently on the raw prompt text. That would send rule-detected values (ID numbers, card numbers) to the external LLM, contradicting NFR-008, so the context-aware detector now waits for redaction. Persistence and content-free evaluation logging (NFR-009) are added with the endpoint and database steps.
+**Revision note:** an earlier design ran both detectors concurrently on the raw prompt text. That would send rule-detected values (ID numbers, card numbers) to the external LLM, contradicting NFR-008, so the context-aware detector now waits for redaction. Persistence (step 5) stores only positions, verdicts and categories, never prompt text (NFR-009).
 
 ---
 

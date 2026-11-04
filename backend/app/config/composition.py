@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.llm import LLMConfig, LLMProviderFactory
-from app.repository.evaluation_log_entry_repository import EvaluationLogEntryRepository
-from app.repository.memory.evaluation_log_entry_repository import InMemoryEvaluationLogEntryRepository
+from app.repository.memory.screening_records import InMemoryScreeningRecordWriter
+from app.repository.screening_record_writer import ScreeningRecordWriter
 from app.screening.classification_parser import ClassificationParser
 from app.screening.context_aware_detector import ContextAwareDetector
 from app.screening.explanation_generator import ExplanationGenerator
@@ -31,7 +31,7 @@ def build_screening_service(
     config: ScreeningConfig,
     rule_source: RuleSource | None = None,
     provider_factory: LLMProviderFactory | None = None,
-    evaluation_log: EvaluationLogEntryRepository | None = None,
+    records: ScreeningRecordWriter | None = None,
 ) -> ScreeningService:
     rule_set = (rule_source or JsonRuleSource()).load()
     provider = (provider_factory or LLMProviderFactory()).create(config)
@@ -46,5 +46,5 @@ def build_screening_service(
         context_detector=context_detector,
         catalog=rule_set,
         explainer=ExplanationGenerator(rule_set),
-        evaluation_log=evaluation_log or InMemoryEvaluationLogEntryRepository(),
+        records=records or InMemoryScreeningRecordWriter(),
     )

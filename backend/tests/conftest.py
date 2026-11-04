@@ -65,6 +65,15 @@ class FakeProvider(LLMProvider):
         return "reply"
 
 
+# Valid production settings for tests. The database address is never contacted
+# (the engine connects lazily); .invalid is a reserved, unresolvable domain.
+PROD_SETTINGS = {
+    "app_env": "production",
+    "cors_origins": ["https://sentryprompt.example"],
+    "database_url": "postgresql://sentry@db.invalid:5432/postgres",
+}
+
+
 @pytest.fixture
 def config() -> FakeConfig:
     return FakeConfig()

@@ -49,3 +49,23 @@ def test_missing_key_reported_without_blocking(config, caplog):
         status = asyncio.run(check_llm_model(config.with_(groq_api_key="")))
     assert status is ModelStatus.NOT_CONFIGURED
     assert "GROQ_API_KEY" in caplog.text
+
+
+def test_database_check_reports_unreachable_database_without_details(caplog):
+    from types import SimpleNamespace
+
+    from pydantic import SecretStr
+
+    from app.config.database import create_database_engine
+    from app.config.startup_checks import check_database
+
+    engine = create_database_engine(
+        SimpleNamespace(
+            database_url=SecretStr("postgresql://u:hunter2@127.0.0.1:1/db"), database_ssl="disable"
+        ),
+        pooled=False,
+    )
+    with caplog.at_level(logging.WARNING, logger="app.config.startup_checks"):
+        assert asyncio.run(check_database(engine, timeout_seconds=5)) is None
+    assert "not reachable or not migrated" in caplog.text
+    assert "hunter2" not in caplog.text

@@ -150,9 +150,18 @@ The ERD above is the logical model. On Supabase it maps to PostgreSQL as follows
 | `CONVERSATION`, `MESSAGE`, `ADMIN_AUDIT_LOG` | `public` schema | `conversations.user_id` → `auth.users` and `messages.conversation_id` → `conversations` use `ON DELETE CASCADE` (NFR-014). |
 | `SCREENING_RESULT`, `FLAGGED_SPAN`, `EVALUATION_LOG_ENTRY`, `DETECTION_CATEGORY`, `RULE_PATTERN`, `TEST_SET_ENTRY` | `evaluation` schema | Separate schema, no foreign keys to user tables (NFR-009). |
 
-**Types:** IDs are `uuid`; timestamps are `timestamptz`; encrypted message content is `bytea` (NFR-011). Tables are created and changed only through Alembic migrations, so the schema history is version-controlled.
+**Types:** IDs are `uuid`; timestamps are `timestamptz`; encrypted message content is `bytea` (NFR-011). Tables are created and changed only through Alembic migrations (`backend/migrations/versions/`, starting with `0001_initial_schema.py`), so the schema history is version-controlled.
 
-**Access control:** Row Level Security is enabled on every `public` and `evaluation` table with no policies for the public (`anon`) key, so the browser cannot read or write application data directly. All data access goes through the FastAPI backend, which applies the rules in SERVICE_LAYER.md. The frontend talks to Supabase only for sign-in.
+**Implemented deviation (approved):** `DETECTION_CATEGORY`, `RULE_PATTERN` and `TEST_SET_ENTRY` are **not** database tables. Their single source of truth is the version-controlled files `backend/app/screening/rules/detection_categories.json` and `docs/evaluation/TEST_SET.csv`, with fixed IDs. Copying them into tables would create two sources that could drift apart. As a result, `flagged_spans.category_id` and `evaluation_log_entries.category_id` store the category's fixed ID without a database foreign key; the backend only ever writes IDs taken from the loaded rules file.
+
+**Enforced by the database, not just the code** (all verified by integration tests in `backend/tests/repository/postgres/`):
+- Fixed-value columns (verdicts, outcomes, roles, statuses, channels) have `CHECK` constraints, so free text such as prompt content cannot be stored in them.
+- The `evaluation` schema has no column that can hold prompt text and no link to any user (NFR-009).
+- `evaluation_log_entries` and `admin_audit_log` are append-only: `UPDATE`, `DELETE` and `TRUNCATE` are rejected by triggers (NFR-009, FR-022). This guards against application bugs and SQL injection; it does not stop someone with owner access, who could drop the triggers.
+- A trigger on `auth.users` creates the matching `profiles` row for every new account.
+- Deleting an account in `auth.users` removes its profile, conversations and messages through `ON DELETE CASCADE` in one transaction; the audit log, which has no foreign keys, is kept (NFR-014, FR-022).
+
+**Access control:** Row Level Security is enabled on every `public` and `evaluation` table (including Alembic's own `alembic_version` table) with no policies, and all table access is revoked from Supabase's `anon` and `authenticated` roles, so the browser's publishable key cannot read or write application data directly. All data access goes through the FastAPI backend, which applies the rules in SERVICE_LAYER.md. The frontend talks to Supabase only for sign-in.
 
 **Dashboard visibility:** the project owner can browse every table in the Supabase dashboard. Message content still appears only as ciphertext there, because it is encrypted by the backend before it is written (NFR-011), so the dashboard does not become a back door around NFR-013.
 

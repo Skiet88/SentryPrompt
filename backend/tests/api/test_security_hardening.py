@@ -8,8 +8,9 @@ from fastapi.testclient import TestClient
 
 from app.config.settings import Settings
 from app.main import create_app
+from tests.conftest import PROD_SETTINGS
 
-PROD = {"app_env": "production", "cors_origins": ["https://sentryprompt.example"]}
+PROD = PROD_SETTINGS
 
 
 def client(**overrides) -> TestClient:

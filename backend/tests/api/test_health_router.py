@@ -8,10 +8,11 @@ from fastapi.testclient import TestClient
 from app import __version__
 from app.config.settings import Settings
 from app.main import create_app
+from tests.conftest import PROD_SETTINGS
 
 
 def test_health_reports_ok_version_and_environment():
-    settings = Settings(_env_file=None, app_env="production", cors_origins=["https://sentryprompt.example"])
+    settings = Settings(_env_file=None, **PROD_SETTINGS)
     client = TestClient(create_app(settings))
     response = client.get("/health")
     assert response.status_code == 200

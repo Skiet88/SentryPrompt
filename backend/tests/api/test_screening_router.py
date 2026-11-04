@@ -15,10 +15,8 @@ from app.config.lazy import Lazy
 from app.config.settings import Settings
 from app.llm import LLMProviderFactory, ProviderRegistry
 from app.main import create_app
-from app.repository.memory.evaluation_log_entry_repository import (
-    InMemoryEvaluationLogEntryRepository,
-)
-from tests.conftest import FakeProvider
+from app.repository.memory.screening_records import InMemoryScreeningRecordWriter
+from tests.conftest import PROD_SETTINGS, FakeProvider
 
 URL = "/api/prompts/screen"
 ID_PROMPT = "My ID is 9203105800089, can you check it?"
@@ -38,7 +36,7 @@ def make_client(reply: str = '{"flags": []}', error: Exception | None = None, **
     service = build_screening_service(
         config,
         provider_factory=LLMProviderFactory(registry),
-        evaluation_log=InMemoryEvaluationLogEntryRepository(),
+        records=InMemoryScreeningRecordWriter(),
     )
     app.dependency_overrides[get_screening_service] = lambda: Lazy(lambda: service)
     return TestClient(app)
@@ -74,7 +72,7 @@ def test_context_failure_fails_closed():
 
 
 def test_endpoint_does_not_exist_in_production():
-    client = make_client(app_env="production", cors_origins=["https://sentryprompt.example"])
+    client = make_client(**PROD_SETTINGS)
     assert client.post(URL, json={"text": "hello"}).status_code == 404
 
 
@@ -160,16 +158,14 @@ def test_screening_is_logged_without_content():
     registry.register(FakeProvider)
     config = Settings(_env_file=None, llm_provider="fake")
     app = create_app(config)
-    log = InMemoryEvaluationLogEntryRepository()
-    service = build_screening_service(
-        config, provider_factory=LLMProviderFactory(registry), evaluation_log=log
-    )
+    records = InMemoryScreeningRecordWriter()
+    service = build_screening_service(config, provider_factory=LLMProviderFactory(registry), records=records)
     app.dependency_overrides[get_screening_service] = lambda: Lazy(lambda: service)
     TestClient(app).post(URL, json={"text": ID_PROMPT})
 
     import asyncio
 
-    [entry] = asyncio.run(log.find_all())
+    [entry] = asyncio.run(records.log.find_all())
     assert entry.outcome.value == "flagged"
     assert "9203105800089" not in repr(entry)
 

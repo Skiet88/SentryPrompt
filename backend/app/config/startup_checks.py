@@ -12,6 +12,10 @@ import asyncio
 import logging
 from enum import StrEnum
 
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncEngine
+
 from app.exception import ConfigurationError, ProviderError
 from app.llm import LLMConfig, LLMProviderFactory
 
@@ -57,3 +61,26 @@ async def check_llm_model(
         return ModelStatus.MISSING
     logger.info("Screening: using %s (available)", label)
     return ModelStatus.AVAILABLE
+
+
+async def check_database(engine: AsyncEngine, timeout_seconds: float = CHECK_TIMEOUT_SECONDS) -> str | None:
+    """Log whether the database is reachable and which migration it is on.
+    Returns the schema version, or None. Never blocks startup."""
+
+    async def read_version() -> str | None:
+        async with engine.connect() as connection:
+            result = await connection.execute(text("SELECT version_num FROM public.alembic_version"))
+            return result.scalar_one_or_none()
+
+    try:
+        version = await asyncio.wait_for(read_version(), timeout_seconds)
+    except (SQLAlchemyError, OSError, TimeoutError) as exc:
+        # Exception type only: driver messages can include connection details.
+        logger.warning(
+            "Database: not reachable or not migrated (%s). Check DATABASE_URL and run "
+            "'uv run alembic upgrade head'.",
+            type(exc).__name__,
+        )
+        return None
+    logger.info("Database: connected (schema version %s)", version)
+    return version

@@ -9,6 +9,9 @@ dependencies = [
     "httpx",
     "groq",
     "google-genai",
+    "sqlalchemy[asyncio]>=2.1.7",
+    "asyncpg>=0.32.0",
+    "alembic>=1.20.1",
 ]
 
 [dependency-groups]
@@ -35,6 +38,9 @@ select = ["E", "W", "F", "I", "B", "UP", "S", "SIM", "RUF"]
 [tool.ruff.lint.per-file-ignores]
 # assert is how pytest checks results.
 "tests/**" = ["S101"]
+# Migrations build DDL from constant table and role names defined in the
+# migration itself (never from input); review each migration for this.
+"migrations/**" = ["S608"]
 
 [tool.mypy]
 python_version = "3.11"
