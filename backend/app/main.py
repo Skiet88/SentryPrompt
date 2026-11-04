@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import conversation_router, health_router, profile_router, screening_router
+from app.api import admin_router, conversation_router, health_router, profile_router, screening_router
 from app.config.composition import build_chat_service, build_screening_service
 from app.config.database import create_database_engine
 from app.config.dependencies import get_settings
@@ -28,6 +28,7 @@ from app.config.startup_checks import check_auth, check_database, check_llm_mode
 from app.exception import ConfigurationError
 from app.exception.handlers import register_exception_handlers
 from app.llm import LLMProvider, LLMProviderFactory
+from app.repository.admin_audit_log_repository import AdminAuditLogRepository
 from app.repository.conversation_repository import ConversationRepository, MessageRepository
 from app.repository.encryption.message_cipher import AesGcmMessageCipher
 from app.repository.memory.conversation_repository import InMemoryConversationStore
@@ -38,9 +39,10 @@ from app.repository.postgres.conversation_repository import (
     PostgresMessageRepository,
 )
 from app.repository.postgres.screening_records import PostgresScreeningRecordWriter
-from app.repository.postgres.user_repository import PostgresUserRepository
+from app.repository.postgres.user_repository import PostgresAdminAuditLogRepository, PostgresUserRepository
 from app.repository.screening_record_writer import ScreeningRecordWriter
 from app.repository.user_repository import UserRepository
+from app.service.admin.admin_service import AdminService
 from app.service.auth.auth_service import AuthService
 from app.service.auth.supabase_identity_provider import SupabaseIdentityProvider
 
@@ -106,6 +108,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(profile_router.router)
     app.include_router(screening_router.router)
     app.include_router(conversation_router.router)
+    app.include_router(admin_router.router)
     return app
 
 
@@ -123,23 +126,31 @@ def _wire_auth(app: FastAPI, settings: Settings) -> None:
     """Login checks (Supabase Auth). Built on first use, so the app (and
     /health) starts even before the Supabase keys are configured."""
     engine = app.state.database_engine
-    users: UserRepository = PostgresUserRepository(engine) if engine is not None else InMemoryUserRepository()
+    users: UserRepository
+    audit: AdminAuditLogRepository
+    if engine is not None:
+        users, audit = PostgresUserRepository(engine), PostgresAdminAuditLogRepository(engine)
+    else:
+        memory = InMemoryUserRepository()  # implements both interfaces
+        users, audit = memory, memory
     http_client = httpx.AsyncClient(timeout=settings.auth_request_timeout_seconds)
     app.state.http_client = http_client
-    app.state.auth_service = Lazy(
-        lambda: AuthService(
-            SupabaseIdentityProvider(
-                settings.supabase_url,
-                settings.supabase_secret_key,
-                settings.auth_request_timeout_seconds,
-                client=http_client,
-            ),
-            users,
+    identity = Lazy(
+        lambda: SupabaseIdentityProvider(
+            settings.supabase_url,
+            settings.supabase_secret_key,
+            settings.auth_request_timeout_seconds,
+            client=http_client,
         )
     )
+    app.state.auth_service = Lazy(lambda: AuthService(identity.get(), users))
+    # Account administration only: built without any conversation or message
+    # repository, so it cannot reach content (NFR-013).
+    app.state.admin_service = Lazy(lambda: AdminService(identity.get(), users, audit))
     window = settings.rate_limit_window_seconds
     app.state.auth_rate_limiter = SlidingWindowRateLimiter(settings.auth_rate_limit_per_client, window)
     app.state.profile_rate_limiter = SlidingWindowRateLimiter(settings.profile_rate_limit_per_user, window)
+    app.state.admin_rate_limiter = SlidingWindowRateLimiter(settings.admin_rate_limit_per_user, window)
 
 
 def _wire_screening(app: FastAPI, settings: Settings) -> None:

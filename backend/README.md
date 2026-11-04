@@ -147,6 +147,23 @@ with `MESSAGE_ENCRYPTION_KEY` from `.env` (generate one with
 `uv run python scripts/generate_key.py`). Someone else's conversation always
 answers 404, exactly like one that doesn't exist.
 
+## Admin (account management)
+
+| Endpoint | What it does | Needs |
+|---|---|---|
+| `GET /api/admin/users?page=1&perPage=50` | Accounts with role, status and verification | Admin |
+| `POST /api/admin/users/{id}/suspend` | Suspend (optional `{"reason": "..."}`) | Admin; not yourself or another admin |
+| `POST /api/admin/users/{id}/reinstate` | Reinstate | Admin; not yourself |
+| `GET /api/admin/audit-log?limit=50&offset=0` | Admin actions, newest first | Admin |
+
+"Admin" means a verified, active account with `role = 'admin'` in the
+`profiles` table (set by hand, setup guide step 7); everyone else gets 403.
+Each suspend or reinstate writes an audit entry in the same transaction as
+the status change, then bans or unbans the login in Supabase. If Supabase
+can't be reached, the answer has `loginBlockUpdated: false`: the backend
+still blocks the account, and repeating the action retries the ban. There is
+no admin route to conversations or messages (NFR-013).
+
 ## Trying the API (development)
 
 1. Get a token for your test account (step 6C of the setup guide):
@@ -154,6 +171,8 @@ answers 404, exactly like one that doesn't exist.
    ```bash
    uv run python scripts/dev_login.py
    ```
+
+   The token is copied to the clipboard, not printed (`--print` shows it).
 
 2. Open http://localhost:8000/docs, click **Authorize**, paste the token, and
    try `POST /api/prompts/screen` with
@@ -175,6 +194,7 @@ the provider still offers it, e.g.
 | `.env` change has no effect | Settings are read once at startup | Restart the server (Ctrl+C, then start again) |
 | A setting has the wrong value | The same name appears twice in `.env`; the **last** one wins | Keep each setting once |
 | `{"error": "configuration_error"}` | No API key set | Add the key to `.env` and restart |
+| Startup error about `SUPABASE_URL` | Dashboard address or a path such as `/rest/v1` | Use only the Project URL, `https://<project>.supabase.co` |
 
 A failed context check is never treated as clean: the prompt is marked
 `UNAVAILABLE`, the student is warned, and rule-based flags still appear.
@@ -203,6 +223,7 @@ uv run pip-audit                 # known vulnerabilities in dependencies
 - Validation errors (422) never echo the submitted prompt back.
 - `/docs`, `/redoc` and `/openapi.json` are disabled in production.
 - Every endpoint except `/health` requires a login; login checks fail closed (503) if Supabase is unreachable.
+- Admin routes need an admin role from the database; every admin action is audited in the same transaction; admins have no route to conversation content.
 - Message content is encrypted at rest; conversations are only reachable by their owner.
 - Startup fails on unsafe settings (`*` in `CORS_ORIGINS`, non-HTTPS origins in production).
 - Server errors return a generic message; details go only to the server log,

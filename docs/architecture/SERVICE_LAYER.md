@@ -48,10 +48,10 @@ It depends only on interfaces (`Detector`, a category catalog, the explanation g
 | GET | `/api/conversations/{id}` | View a specific conversation's messages | Yes, owner only; someone else's conversation is a 404, identical to a missing one |
 | DELETE | `/api/conversations/{id}` | Delete a conversation and its messages (FR-020) | Yes, owner only (also while suspended) |
 | POST | `/api/conversations/{id}/messages` | Send a prompt: screened on the server; if clean, or `sendAnyway` is true, the redacted prompt goes to the AI and both messages are saved; otherwise `status: "needs_decision"` and nothing is sent or saved (FR-007 to FR-009) | Yes, verified and active; owner only; counts towards the screening rate limit |
-| GET | `/api/admin/users` | List all accounts (FR-021) | Yes, admin role |
-| POST | `/api/admin/users/{id}/suspend` | Suspend an account | Yes, admin role |
-| POST | `/api/admin/users/{id}/reinstate` | Reinstate a suspended account | Yes, admin role |
-| GET | `/api/admin/audit-log` | View admin action history (FR-022) | Yes, admin role |
+| GET | `/api/admin/users?page=1&perPage=50` | List accounts with role, status and verification (FR-021); at most 100 per page | Yes, verified and active admin |
+| POST | `/api/admin/users/{id}/suspend` | Suspend an account (optional body `{"reason": "..."}`, at most 500 characters); writes one audit entry and bans the login in Supabase | Yes, verified and active admin; not own account, not another admin |
+| POST | `/api/admin/users/{id}/reinstate` | Reinstate a suspended account; writes one audit entry and removes the Supabase ban | Yes, verified and active admin; not own account |
+| GET | `/api/admin/audit-log?limit=50&offset=0` | View admin action history, newest first (FR-022) | Yes, verified and active admin |
 
 **Deliberate omission, stated not hidden:** there is no `GET /api/admin/conversations/{userId}` endpoint — this is intentional, not an oversight, per NFR-013.
 

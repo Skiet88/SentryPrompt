@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -69,6 +70,8 @@ class Settings(BaseSettings):
     # attempts per client address before that call (protects Supabase quota).
     auth_rate_limit_per_client: int = Field(default=60, gt=0, le=10_000)
     profile_rate_limit_per_user: int = Field(default=30, gt=0, le=1000)
+    # Admin actions call Supabase's admin API (list users, ban/unban).
+    admin_rate_limit_per_user: int = Field(default=30, gt=0, le=1000)
     rate_limit_window_seconds: int = Field(default=60, gt=0, le=3600)
 
     @field_validator("cors_origins")
@@ -89,10 +92,26 @@ class Settings(BaseSettings):
 
     @field_validator("supabase_url")
     @classmethod
-    def _https_supabase_url(cls, url: str) -> str:
-        if url and not url.startswith("https://"):
-            raise ValueError("SUPABASE_URL must use https://")
-        return url.rstrip("/")
+    def _supabase_project_url(cls, url: str) -> str:
+        """The bare project address, e.g. https://abcdefgh.supabase.co. Rejects
+        the dashboard address and addresses with a path (which caused 404s)."""
+        url = url.strip().rstrip("/")
+        if not url:
+            return url
+        parts = urlsplit(url)
+        if parts.scheme != "https" or not parts.hostname:
+            raise ValueError("SUPABASE_URL must be https://<your-project>.supabase.co")
+        if parts.hostname in ("supabase.com", "www.supabase.com", "app.supabase.com"):
+            raise ValueError(
+                "SUPABASE_URL is the dashboard address. Use the Project URL from "
+                "Project Settings -> Data API, e.g. https://<your-project>.supabase.co"
+            )
+        if parts.path or parts.query or parts.fragment:
+            raise ValueError(
+                "SUPABASE_URL must not have a path (such as /rest/v1). "
+                "Use only https://<your-project>.supabase.co"
+            )
+        return url
 
     @model_validator(mode="after")
     def _production_rules(self) -> Settings:

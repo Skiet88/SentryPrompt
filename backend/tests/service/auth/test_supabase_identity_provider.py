@@ -132,3 +132,73 @@ def test_error_body_is_not_trusted_as_json_input():
     with pytest.raises(AuthenticationError) as caught:
         asyncio.run(p.verify_token(TOKEN))
     assert TOKEN not in str(caught.value)
+
+
+# --- Admin: list accounts and login block (FR-021) ---
+
+
+def test_list_users_sends_pagination_and_secret_key_only():
+    payload = {"users": [user_json(), {**user_json(confirmed=False), "id": USER_ID.upper(), "email": None}]}
+    p, seen = provider(lambda r: httpx.Response(200, json=payload))
+    records = asyncio.run(p.list_users(2, 25))
+    assert [(r.user_id, r.email, r.email_verified) for r in records] == [
+        (USER_ID, "a@b.co", True),
+        (USER_ID, "", False),
+    ]
+    [request] = seen
+    assert request.method == "GET"
+    assert request.url.path == "/auth/v1/admin/users"
+    assert dict(request.url.params) == {"page": "2", "per_page": "25"}
+    assert request.headers["apikey"] == SECRET.get_secret_value()
+    assert "authorization" not in request.headers
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(500),
+        httpx.Response(401),
+        httpx.Response(200, text="not json"),
+        httpx.Response(200, json={"no_users": []}),
+        httpx.Response(200, json={"users": [{"id": "not-a-uuid"}]}),
+    ],
+    ids=["server_error", "unauthorized", "not_json", "missing_users", "bad_id"],
+)
+def test_list_users_fails_closed(response):
+    p, _ = provider(lambda r: response)
+    with pytest.raises(AuthUnavailableError):
+        asyncio.run(p.list_users(1, 10))
+
+
+@pytest.mark.parametrize("banned, duration", [(True, "876000h"), (False, "none")])
+def test_set_banned(banned, duration):
+    p, seen = provider(lambda r: httpx.Response(200, json=user_json()))
+    asyncio.run(p.set_banned(USER_ID, banned))
+    [request] = seen
+    assert request.method == "PUT"
+    assert str(request.url) == f"{URL}/auth/v1/admin/users/{USER_ID}"
+    assert json.loads(request.content) == {"ban_duration": duration}
+    assert request.headers["apikey"] == SECRET.get_secret_value()
+    assert "authorization" not in request.headers
+
+
+def test_set_banned_failure_fails_closed():
+    p, _ = provider(lambda r: httpx.Response(503))
+    with pytest.raises(AuthUnavailableError):
+        asyncio.run(p.set_banned(USER_ID, True))
+
+
+def test_set_banned_network_error_fails_closed():
+    def boom(request):
+        raise httpx.ConnectError("down")
+
+    p, _ = provider(boom)
+    with pytest.raises(AuthUnavailableError):
+        asyncio.run(p.set_banned(USER_ID, True))
+
+
+def test_set_banned_rejects_non_uuid_ids_before_any_request():
+    p, seen = provider(lambda r: httpx.Response(200))
+    with pytest.raises(ValueError):
+        asyncio.run(p.set_banned("../../users", True))
+    assert seen == []
