@@ -11,7 +11,10 @@ from __future__ import annotations
 import asyncio
 import logging
 from enum import StrEnum
+from typing import Protocol
 
+import httpx
+from pydantic import SecretStr
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -85,3 +88,34 @@ async def check_database(engine: AsyncEngine, timeout_seconds: float = CHECK_TIM
         return None
     logger.info("Database: connected (schema version %s)", version)
     return version
+
+
+class AuthConfig(Protocol):
+    @property
+    def supabase_url(self) -> str: ...
+    @property
+    def supabase_secret_key(self) -> SecretStr | None: ...
+
+
+async def check_auth(config: AuthConfig, client: httpx.AsyncClient) -> bool:
+    """Log whether Supabase Auth is reachable and accepts SUPABASE_SECRET_KEY.
+    Never blocks startup, never logs the key."""
+    if not config.supabase_url or config.supabase_secret_key is None:
+        logger.warning("Auth: SUPABASE_URL or SUPABASE_SECRET_KEY not set; login will not work")
+        return False
+    try:
+        response = await client.get(
+            f"{config.supabase_url}/auth/v1/settings",
+            headers={"apikey": config.supabase_secret_key.get_secret_value()},
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("Auth: Supabase not reachable (%s)", type(exc).__name__)
+        return False
+    if response.status_code in (401, 403):
+        logger.warning("Auth: Supabase rejected SUPABASE_SECRET_KEY (HTTP %s)", response.status_code)
+        return False
+    if response.status_code != 200:
+        logger.warning("Auth: Supabase returned HTTP %s", response.status_code)
+        return False
+    logger.info("Auth: Supabase reachable, secret key accepted")
+    return True

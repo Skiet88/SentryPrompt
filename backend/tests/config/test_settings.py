@@ -62,12 +62,21 @@ def test_production_with_https_origins_accepted():
     assert settings.is_production and not settings.docs_enabled
 
 
-def test_screening_rate_limit_defaults_and_dev_only_flag():
+def test_rate_limit_defaults():
     settings = make()
     assert (settings.screening_rate_limit_per_client, settings.screening_rate_limit_global) == (10, 25)
-    assert settings.unauthenticated_screening_enabled
-    prod = make(**PROD_SETTINGS)
-    assert not prod.unauthenticated_screening_enabled
+    assert (settings.auth_rate_limit_per_client, settings.profile_rate_limit_per_user) == (60, 30)
+
+
+@pytest.mark.parametrize("missing", ["supabase_url", "supabase_secret_key"])
+def test_production_requires_supabase_auth(missing):
+    with pytest.raises(ValidationError, match="SUPABASE"):
+        make(**{**PROD_SETTINGS, missing: None if missing == "supabase_secret_key" else ""})
+
+
+def test_supabase_secret_key_is_secret():
+    settings = make(supabase_secret_key="sb_secret_abcdef")  # noqa: S106 - made-up test value
+    assert "sb_secret_abcdef" not in repr(settings)
 
 
 @pytest.mark.parametrize(

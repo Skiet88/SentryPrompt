@@ -10,13 +10,13 @@ pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from app.config.composition import build_screening_service
-from app.config.dependencies import get_screening_service
+from app.config.dependencies import get_auth_service, get_screening_service
 from app.config.lazy import Lazy
 from app.config.settings import Settings
 from app.llm import LLMProviderFactory, ProviderRegistry
 from app.main import create_app
 from app.repository.memory.screening_records import InMemoryScreeningRecordWriter
-from tests.conftest import PROD_SETTINGS, FakeProvider
+from tests.conftest import PROD_SETTINGS, FakeProvider, bearer, make_auth_service
 
 URL = "/api/prompts/screen"
 ID_PROMPT = "My ID is 9203105800089, can you check it?"
@@ -39,7 +39,9 @@ def make_client(reply: str = '{"flags": []}', error: Exception | None = None, **
         records=InMemoryScreeningRecordWriter(),
     )
     app.dependency_overrides[get_screening_service] = lambda: Lazy(lambda: service)
-    return TestClient(app)
+    auth_service, _, _ = make_auth_service()
+    app.dependency_overrides[get_auth_service] = lambda: Lazy(lambda: auth_service)
+    return TestClient(app, headers=bearer())
 
 
 def test_clean_prompt():
@@ -71,9 +73,11 @@ def test_context_failure_fails_closed():
     assert "couldn't fully check" in body["notice"]
 
 
-def test_endpoint_does_not_exist_in_production():
+def test_endpoint_is_served_in_production_behind_login():
     client = make_client(**PROD_SETTINGS)
-    assert client.post(URL, json={"text": "hello"}).status_code == 404
+    assert client.post(URL, json={"text": "hello"}).status_code == 200
+    anonymous = client.post(URL, json={"text": "hello"}, headers={"Authorization": ""})
+    assert anonymous.status_code == 401
 
 
 def test_rate_limit_returns_429_with_retry_after():
@@ -161,7 +165,9 @@ def test_screening_is_logged_without_content():
     records = InMemoryScreeningRecordWriter()
     service = build_screening_service(config, provider_factory=LLMProviderFactory(registry), records=records)
     app.dependency_overrides[get_screening_service] = lambda: Lazy(lambda: service)
-    TestClient(app).post(URL, json={"text": ID_PROMPT})
+    auth_service, _, _ = make_auth_service()
+    app.dependency_overrides[get_auth_service] = lambda: Lazy(lambda: auth_service)
+    TestClient(app, headers=bearer()).post(URL, json={"text": ID_PROMPT})
 
     import asyncio
 
@@ -170,8 +176,15 @@ def test_screening_is_logged_without_content():
     assert "9203105800089" not in repr(entry)
 
 
+def _app_without_llm_key():
+    app = create_app(Settings(_env_file=None, groq_api_key=""))
+    auth_service, _, _ = make_auth_service()
+    app.dependency_overrides[get_auth_service] = lambda: Lazy(lambda: auth_service)
+    return TestClient(app, raise_server_exceptions=False, headers=bearer())
+
+
 def test_missing_llm_key_fails_safely_and_app_still_starts():
-    client = TestClient(create_app(Settings(_env_file=None, groq_api_key="")), raise_server_exceptions=False)
+    client = _app_without_llm_key()
     assert client.get("/health").status_code == 200
     response = client.post(URL, json={"text": "hello"})
     assert response.status_code == 500
@@ -185,7 +198,7 @@ def test_missing_llm_key_fails_safely_and_app_still_starts():
 def test_invalid_input_is_rejected_before_the_service_is_built():
     """Found by a live-server test: validation must come first, so invalid
     input never reaches service construction."""
-    client = TestClient(create_app(Settings(_env_file=None, groq_api_key="")), raise_server_exceptions=False)
+    client = _app_without_llm_key()
     response = client.post(URL, json={"text": "hi", "role": "admin"})
     assert response.status_code == 422
     assert response.json()["error"] == "invalid_request"

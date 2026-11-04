@@ -69,3 +69,26 @@ def test_database_check_reports_unreachable_database_without_details(caplog):
         assert asyncio.run(check_database(engine, timeout_seconds=5)) is None
     assert "not reachable or not migrated" in caplog.text
     assert "hunter2" not in caplog.text
+
+
+def test_auth_check(caplog):
+    import httpx
+    from pydantic import SecretStr
+
+    from app.config.startup_checks import check_auth
+
+    def config(url="https://p.supabase.co", key="sb_secret_value"):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(supabase_url=url, supabase_secret_key=SecretStr(key) if key else None)
+
+    def client(status):
+        return httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(status)))
+
+    with caplog.at_level(logging.INFO, logger="app.config.startup_checks"):
+        assert asyncio.run(check_auth(config(), client(200))) is True
+        assert asyncio.run(check_auth(config(), client(401))) is False
+        assert asyncio.run(check_auth(config(key=None), client(200))) is False
+    assert "secret key accepted" in caplog.text
+    assert "rejected SUPABASE_SECRET_KEY" in caplog.text
+    assert "sb_secret_value" not in caplog.text

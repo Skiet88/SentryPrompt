@@ -1,8 +1,7 @@
 """POST /api/prompts/screen: screen one prompt (FR-001 to FR-006).
 
-TEMPORARY: served only outside production until login exists (agreed
-exception, Settings.unauthenticated_screening_enabled); step 6 adds the
-verified-login requirement.
+Requires a verified, active login (FR-014, SECURITY_RULES.md §2); rate
+limits apply per user and globally.
 """
 
 from typing import Annotated

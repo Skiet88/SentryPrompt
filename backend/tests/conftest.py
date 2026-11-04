@@ -71,7 +71,67 @@ PROD_SETTINGS = {
     "app_env": "production",
     "cors_origins": ["https://sentryprompt.example"],
     "database_url": "postgresql://sentry@db.invalid:5432/postgres",
+    "supabase_url": "https://project.supabase.invalid",
+    "supabase_secret_key": "sb_secret_test_value",
 }
+
+# ---- authentication test doubles ------------------------------------------------
+
+STUDENT_ID = "00000000-0000-4000-8000-000000000001"
+ADMIN_ID = "00000000-0000-4000-8000-000000000002"
+UNVERIFIED_ID = "00000000-0000-4000-8000-000000000003"
+SUSPENDED_ID = "00000000-0000-4000-8000-000000000004"
+
+
+class FakeIdentityProvider:
+    """Stands in for Supabase Auth: known tokens map to identities."""
+
+    def __init__(self) -> None:
+        from app.service.auth.identity import VerifiedIdentity
+
+        self.identities = {
+            "student-token": VerifiedIdentity(STUDENT_ID, "student@uni.ac.za", True),
+            "admin-token": VerifiedIdentity(ADMIN_ID, "admin@uni.ac.za", True),
+            "unverified-token": VerifiedIdentity(UNVERIFIED_ID, "new@uni.ac.za", False),
+            "suspended-token": VerifiedIdentity(SUSPENDED_ID, "suspended@uni.ac.za", True),
+        }
+        self.unavailable = False
+        self.deleted: list[str] = []
+        self.received_tokens: list[str] = []
+
+    async def verify_token(self, access_token: str):
+        from app.exception import AuthenticationError, AuthUnavailableError
+
+        self.received_tokens.append(access_token)
+        if self.unavailable:
+            raise AuthUnavailableError("Login could not be checked right now.")
+        if access_token not in self.identities:
+            raise AuthenticationError()
+        return self.identities[access_token]
+
+    async def delete_user(self, user_id: str) -> None:
+        from app.exception import AuthUnavailableError
+
+        if self.unavailable:
+            raise AuthUnavailableError("The account could not be deleted right now.")
+        self.deleted.append(user_id)
+
+
+def make_auth_service():
+    """An AuthService with the fake provider and in-memory profiles, where
+    ADMIN_ID is an admin and SUSPENDED_ID is suspended."""
+    from app.repository.memory.user_repository import InMemoryUserRepository
+    from app.service.auth.auth_service import AuthService
+
+    users = InMemoryUserRepository()
+    users.set_profile(ADMIN_ID, role="admin")
+    users.set_profile(SUSPENDED_ID, status="suspended")
+    provider = FakeIdentityProvider()
+    return AuthService(provider, users), provider, users
+
+
+def bearer(token: str = "student-token") -> dict[str, str]:  # noqa: S107 - fake test token
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture

@@ -39,10 +39,10 @@ It depends only on interfaces (`Detector`, a category catalog, the explanation g
 | Method | Endpoint | Description | Auth Required |
 |---|---|---|---|
 | — | *Supabase Auth* | Register, verify email, log in, log out, reset password (FR-013–FR-017). Called from the frontend with `supabase-js`; not backend endpoints (AUTH_DESIGN.md §0) | — |
-| GET | `/api/profile` | View own profile (FR-018) | Yes |
-| PUT | `/api/profile` | Edit own profile (FR-018) | Yes |
-| DELETE | `/api/profile` | Delete own account + all data (FR-020) | Yes |
-| POST | `/api/prompts/screen` | Submit a prompt for screening (FR-001–FR-006); rate-limited | Yes, verified. *Until login exists (backend plan, step 6) it is served only outside production, without login: an agreed, temporary exception to SECURITY_RULES.md §2* |
+| GET | `/api/profile` | View own profile (FR-018) | Yes (also while suspended) |
+| PUT | `/api/profile` | Edit own display name (FR-018); nothing else can be set | Yes, verified and active |
+| DELETE | `/api/profile` | Delete own account + all data (FR-020, NFR-014) | Yes (also while suspended or unverified) |
+| POST | `/api/prompts/screen` | Submit a prompt for screening (FR-001–FR-006); rate-limited per user and globally | Yes, verified and active |
 | GET | `/api/conversations` | List own conversation history (FR-019) | Yes |
 | GET | `/api/conversations/{id}` | View a specific conversation's messages | Yes, owner only |
 | DELETE | `/api/conversations/{id}` | Delete a conversation (FR-020) | Yes, owner only |
@@ -102,8 +102,9 @@ It depends only on interfaces (`Detector`, a category catalog, the explanation g
 | Status | Condition | Body |
 |---|---|---|
 | 400 | Prompt is only whitespace (FR-001) | `{"error": "invalid_argument", "message": "Prompt text cannot be empty"}` |
-| 401 / 403 | Not logged in / not verified / suspended *(from step 6)* | `{"error": "...", "message": "..."}` |
-| 404 | Endpoint requested in production before login exists | Standard 404 |
+| 401 | No token, or a forged, expired or logged-out token. Includes `WWW-Authenticate: Bearer` | `{"error": "unauthenticated", "message": "Please log in."}` |
+| 403 | Logged in but not allowed: `email_not_verified`, `account_suspended` or `admin_only` | `{"error": "account_suspended", "message": "..."}` |
+| 503 | The login could not be checked (Supabase unreachable). **Fails closed:** the request is refused, never let through | `{"error": "auth_unavailable", ...}` |
 | 413 | Request body over `MAX_REQUEST_BYTES` (64 KB) | `{"error": "payload_too_large", ...}` |
 | 422 | Missing/invalid fields, unknown fields, text over 4,000 characters, malformed JSON. **The submitted values are never echoed back** | `{"error": "invalid_request", "message": "The request is not valid.", "details": [{"field": "text", "problem": "..."}]}` |
 | 429 | Rate limit reached: 10 requests per minute per client, 25 per minute in total (protects the LLM quota). Includes a `Retry-After` header | `{"error": "rate_limited", "message": "Too many requests. Please wait a moment and try again."}` |
