@@ -1,9 +1,7 @@
 import { MessageSquare, SquarePen } from "lucide-react";
-import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router";
 
-import type { ConversationSummary } from "@/api/types";
-import { useServices } from "@/app/services";
+import { useConversations } from "@/chat/conversationsStore";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -11,23 +9,21 @@ import { cn } from "@/lib/utils";
 
 import { UserMenu } from "./UserMenu";
 
-type Load = { status: "loading" } | { status: "ready"; items: ConversationSummary[] } | { status: "failed" };
+/** "Today 14:05", "Yesterday", or "3 Nov": all chats share a title, so the time tells them apart. */
+export function chatDate(iso: string, now = new Date()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const days = Math.round(
+    (new Date(now.toDateString()).getTime() - new Date(date.toDateString()).getTime()) / 86_400_000,
+  );
+  if (days === 0) return `Today ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  if (days === 1) return "Yesterday";
+  return date.toLocaleDateString([], { day: "numeric", month: "short" });
+}
 
 /** Left sidebar: new chat at the top, recent chats in the middle, your account at the bottom. */
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { conversations } = useServices();
-  const [load, setLoad] = useState<Load>({ status: "loading" });
-
-  useEffect(() => {
-    let active = true;
-    conversations
-      .list()
-      .then((items) => active && setLoad({ status: "ready", items }))
-      .catch(() => active && setLoad({ status: "failed" }));
-    return () => {
-      active = false;
-    };
-  }, [conversations]);
+  const load = useConversations();
 
   return (
     <div className="flex h-full flex-col">
@@ -52,7 +48,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <Spinner className="size-4" label="Loading chats" />
           </div>
         )}
-        {load.status === "failed" && <p className="px-2 py-1 text-sm text-muted">Couldn't load your chats.</p>}
+        {load.status === "failed" && (
+          <p className="px-2 py-1 text-sm text-muted">
+            Couldn't load your chats.{" "}
+            <button type="button" onClick={load.refresh} className="text-primary hover:underline">
+              Try again
+            </button>
+          </p>
+        )}
         {load.status === "ready" && load.items.length === 0 && (
           <p className="px-2 py-1 text-sm text-muted">Your chats will appear here.</p>
         )}
@@ -71,7 +74,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   }
                 >
                   <MessageSquare className="size-4 shrink-0 text-muted" aria-hidden />
-                  <span className="truncate">{c.title}</span>
+                  <span className="min-w-0 flex-1 truncate">{c.title}</span>
+                  <span className="shrink-0 text-xs font-normal text-muted">{chatDate(c.updatedAt)}</span>
                 </NavLink>
               </li>
             ))}

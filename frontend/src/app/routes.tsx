@@ -3,7 +3,7 @@ import type { RouteObject } from "react-router";
 import { PublicOnly, RequireAuth } from "@/auth/guards";
 import { AppShell } from "@/layout/AppShell";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
-import { ChatHomePage } from "@/pages/ChatHomePage";
+import { ChatPage } from "@/pages/ChatPage";
 import { CheckEmailPage } from "@/pages/CheckEmailPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -30,10 +30,14 @@ export const routes: RouteObject[] = [
       {
         element: <AppShell />,
         children: [
-          { path: "/", element: <ChatHomePage /> },
           {
-            path: "/c/:conversationId",
-            element: <PlaceholderPage title="Chat" text="Opening past chats arrives in the next update." />,
+            // One parent for both addresses, so the chat stays on screen when a
+            // new chat gets its address (see ChatPage).
+            element: <ChatPage />,
+            children: [
+              { path: "/", element: null },
+              { path: "/c/:conversationId", element: null },
+            ],
           },
           {
             path: "/settings",

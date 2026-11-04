@@ -41,6 +41,21 @@ The backend must allow `http://localhost:5173` in `CORS_ORIGINS` (the default).
   readers, everything works with the keyboard, there is a visible focus
   ring, and colours meet WCAG AA contrast in light and dark mode.
 
+## Chat
+
+- A new chat is created when the first prompt is sent. Every prompt is screened
+  by the backend; if something is found, a dialog highlights it, explains why
+  in plain language, and says what the AI will see. **Edit my prompt** is the
+  main button; **Send anyway** is possible.
+- Values the detector found (ID, card and account numbers, contact details) are
+  replaced before the AI sees them, even when sent anyway. Sent prompts show
+  each replaced value as a small "hidden" badge.
+- AI replies are shown as Markdown through `SafeMarkdown`: HTML in a reply is
+  dropped, images are never loaded, and links only work for http(s)/mailto,
+  opening in a new tab without a referrer.
+- Chats have no titles from their content (a title would be stored
+  unencrypted), so the sidebar shows when each chat was last used.
+
 ## Code layout
 
 | Folder | Responsibility |
@@ -49,6 +64,7 @@ The backend must allow `http://localhost:5173` in `CORS_ORIGINS` (the default).
 | `src/api/` | `ApiClient` (adds the login token, safe error messages) and one class per backend area |
 | `src/auth/` | `AuthGateway` interface, its Supabase implementation, login state, route guards |
 | `src/app/` | Routes and the services container (dependency injection, built in `main.tsx`) |
+| `src/chat/` | Chat screen, composer, warning dialog, safe Markdown, highlighting |
 | `src/layout/` | Login layout and the signed-in app shell (sidebar, account menu) |
 | `src/pages/` | One component per page |
 | `src/components/ui/` | Reusable, accessible UI pieces |
