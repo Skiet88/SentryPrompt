@@ -48,10 +48,9 @@ project before demos and presentations (EVALUATION_OF_DESIGN.md §9.4).
 
 - **Site URL:** `http://localhost:5173` for the development project; the real
   HTTPS frontend URL for the deployed project.
-- **Redirect URLs:** leave empty until the frontend exists. Then add only the
-  exact pages the verification and reset links may return to, e.g.
-  `http://localhost:5173/auth/callback` and
-  `http://localhost:5173/reset-password`. Never use wildcards that match other
+- **Redirect URLs:** add only the exact pages the verification and reset
+  links may return to: `http://localhost:5173/auth/callback` and
+  `http://localhost:5173/reset-password` (the frontend uses both). Never use wildcards that match other
   domains (SECURITY_RULES.md §4: redirects only to allow-listed URLs).
 
 ## 4. Bot protection — DEFERRED until before real users

@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/*
+ * SentryPrompt design tokens. Calm, warm neutrals with one accent colour, so
+ * attention goes to the conversation, not the interface. Every text colour
+ * meets WCAG AA contrast on its background in both themes.
+ */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-background: var(--bg);
+  --color-surface: var(--surface);
+  --color-sidebar: var(--sidebar);
+  --color-foreground: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-hover: var(--hover);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-fg);
+  --color-primary-soft: var(--primary-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+}
+
+:root {
+  color-scheme: light;
+  --bg: #f8f7f3;
+  --surface: #ffffff;
+  --sidebar: #f0eee8;
+  --fg: #1f1e1b;
+  --muted: #625f57;
+  --border: #e2dfd6;
+  --hover: #e8e5dd;
+  --primary: #0f766e;
+  --primary-fg: #ffffff;
+  --primary-soft: #e3f1ef;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --warning: #93370d;
+  --warning-soft: #fef3e2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #1c1c1a;
+    --surface: #262624;
+    --sidebar: #161614;
+    --fg: #ecebe6;
+    --muted: #a8a59c;
+    --border: #3a3935;
+    --hover: #30302d;
+    --primary: #2dd4bf;
+    --primary-fg: #0b2a27;
+    --primary-soft: #133a36;
+    --danger: #f97066;
+    --danger-soft: #3d1a17;
+    --warning: #fdb022;
+    --warning-soft: #3b2a0c;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A clearly visible keyboard focus ring everywhere (accessibility). */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
