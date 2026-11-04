@@ -6,7 +6,8 @@ screening and enforces every rule; the frontend never decides who may do what.
 
 ## Setup
 
-Requires Node.js 22.12 or newer.
+Requires Node.js 22.12 or newer (check with `node -v`). `npm ci` refuses to run on
+an older version (`.npmrc`); install the current LTS from https://nodejs.org.
 
 ```bash
 cd frontend
