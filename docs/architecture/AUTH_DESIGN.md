@@ -32,6 +32,19 @@ The flows in §2–§4 describe the required **behaviour**. They are implemented
 3. **The first admin is created by hand.** Every new account is a student. The project owner promotes the first admin with one SQL statement in the Supabase dashboard (docs/setup/SUPABASE_SETUP.md, step 7). There is deliberately **no API endpoint or screen that changes a user's role**, so no one can make themselves, or anyone else, an admin through the application. Role changes therefore require access to the Supabase dashboard itself, which must be protected with a strong password and two-factor authentication.
 4. **Supabase setup** is documented step by step in docs/setup/SUPABASE_SETUP.md.
 
+### 0.2 How a request is authenticated (implemented, backend plan step 6)
+
+1. The client sends `Authorization: Bearer <access token>` (obtained from Supabase sign-in).
+2. Before contacting Supabase, the backend limits attempts per client address (60 per minute) and rejects empty, oversized or malformed tokens.
+3. The backend asks Supabase's Auth API (`GET /auth/v1/user`) whether the token is valid. Supabase checks the signature, the expiry **and that the session has not been logged out**, so logout takes effect immediately (FR-016). This was chosen over verifying tokens locally (which would need a new dependency and would keep accepting a logged-out token until it expired, up to an hour).
+4. Supabase's answer gives the user ID, email and whether the email is verified. **Role and status come only from our `profiles` table**, never from the token or the request.
+5. Each endpoint declares what it needs: logged in (`get_current_user`), verified and active (`get_active_user`), or admin (`get_admin_user`). Missing or invalid login → 401; not allowed → 403 with a reason code.
+6. **Fail closed:** if Supabase cannot be reached or answers unclearly, the request is refused with 503. It is never let through.
+
+Tokens and the secret key are never logged (tested). Account deletion uses Supabase's admin API with the secret key, which exists only in the backend.
+
+Cost of this choice: one call to Supabase per authenticated request (about 100–200 ms), small next to the ~1 s screening. Verifying locally can be added later if speed ever matters.
+
 **Settings to configure in the Supabase dashboard** (Authentication settings): require email confirmation; email-link expiry; site URL and redirect URLs for the verification and reset links; minimum password length; custom SMTP. Exact setting names should be checked in the dashboard at build time.
 
 ---

@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 
 from app.schemas.error_schema import ErrorResponse, FieldProblem, ValidationErrorResponse
 
-from .app_exceptions import RateLimitExceededError, SentryPromptError
+from .app_exceptions import AuthenticationError, RateLimitExceededError, SentryPromptError
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,8 @@ async def _handle_app_error(request: Request, exc: Exception) -> JSONResponse:
     headers = None
     if isinstance(exc, RateLimitExceededError):
         headers = {"Retry-After": str(exc.retry_after_seconds)}
+    elif isinstance(exc, AuthenticationError):
+        headers = {"WWW-Authenticate": "Bearer"}
     return _error_response(exc.status_code, exc.error_code, str(exc), headers)
 
 

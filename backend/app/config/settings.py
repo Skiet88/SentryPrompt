@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     # Encrypt the database connection. Only "disable" for a local test database.
     database_ssl: Literal["require", "disable"] = "require"
     supabase_url: str = ""
+    # Secret: lets the backend verify logins and delete accounts. Backend only.
+    supabase_secret_key: SecretStr | None = None
+    # Not secret (designed to be public). Only used by scripts/dev_login.py.
+    supabase_publishable_key: str = ""
+    auth_request_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
 
     llm_provider: str = "groq"
     groq_api_key: str = ""
@@ -53,6 +58,10 @@ class Settings(BaseSettings):
     # account), so limit per client and in total (SECURITY_RULES.md §4).
     screening_rate_limit_per_client: int = Field(default=10, gt=0, le=1000)
     screening_rate_limit_global: int = Field(default=25, gt=0, le=10_000)
+    # Every authenticated request asks Supabase to verify the token, so limit
+    # attempts per client address before that call (protects Supabase quota).
+    auth_rate_limit_per_client: int = Field(default=60, gt=0, le=10_000)
+    profile_rate_limit_per_user: int = Field(default=30, gt=0, le=1000)
     rate_limit_window_seconds: int = Field(default=60, gt=0, le=3600)
 
     @field_validator("cors_origins")
@@ -86,18 +95,13 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_URL is required in production")
         if self.is_production and self.database_ssl != "require":
             raise ValueError("DATABASE_SSL must be 'require' in production")
+        if self.is_production and (not self.supabase_url or self.supabase_secret_key is None):
+            raise ValueError("SUPABASE_URL and SUPABASE_SECRET_KEY are required in production")
         return self
 
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
-
-    @property
-    def unauthenticated_screening_enabled(self) -> bool:
-        """TEMPORARY (agreed exception to SECURITY_RULES.md §2): until login
-        exists (backend plan, step 6), the screening endpoint is served only
-        outside production. Step 6 removes this and requires a verified login."""
-        return not self.is_production
 
     @property
     def docs_enabled(self) -> bool:

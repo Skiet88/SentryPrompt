@@ -159,9 +159,11 @@ Do this once the backend's database step is on your machine
 
 1. Open `backend/.env` (copy any new lines from `.env.example` first) and set:
    ```
-   DATABASE_URL=     ← Value 3, the full connection string with your password
+   DATABASE_URL=              ← Value 3, the full connection string with your password
    DATABASE_SSL=require
-   SUPABASE_URL=     ← Value 1, the Project URL
+   SUPABASE_URL=              ← Value 1, the Project URL
+   SUPABASE_SECRET_KEY=       ← Value 2, the Secret key (sb_secret_...)
+   SUPABASE_PUBLISHABLE_KEY=  ← the Publishable key (sb_publishable_...), not secret
    ```
    Keep each setting **once** in the file (if a name appears twice, the last
    one wins).
@@ -175,7 +177,8 @@ Do this once the backend's database step is on your machine
    `conversations`, `messages` and `admin_audit_log` (schema `public`), and the
    `evaluation` tables. Each shows **RLS enabled**.
 4. Restart the server. The startup log shows
-   `Database: connected (schema version 0001)`.
+   `Database: connected (schema version 0001)` and
+   `Auth: Supabase reachable, secret key accepted`.
 
 If `alembic upgrade head` fails:
 
@@ -197,12 +200,30 @@ It should show a host ending in `.pooler.supabase.com`, port 5432 and user
 `postgres.<project>`. Never paste the connection string itself anywhere: if
 it is ever exposed, reset the database password.
 
+## 6C. Test logging in (development)
+
+The API now requires a login. Until the frontend exists, test with a token:
+
+1. Create a test account in the dashboard: **Authentication → Users → Add
+   user → Create new user**, with **your own email** and a password, and tick
+   **Auto Confirm User** (so it counts as verified). Or sign up through the
+   frontend later.
+2. In `backend`, get a token (your password is typed but not shown):
+   ```
+   uv run python scripts/dev_login.py
+   ```
+3. Open http://localhost:8000/docs, click **Authorize**, paste the token,
+   and try `GET /api/profile` and `POST /api/prompts/screen`.
+
+The token works like a password for about an hour: don't share it, paste it
+into chats or save it in files. Without a token, the API answers 401.
+
 ## 7. Create the first admin (after the database tables exist)
 
 The `profiles` table is created in step 6B. After that:
 
-1. Sign up through the app with the account that should become admin, and
-   verify its email.
+1. Create or sign up the account that should become admin (step 6C), and
+   make sure its email is verified.
 2. Open **SQL Editor** in the Supabase dashboard and run, with that account's
    email:
 

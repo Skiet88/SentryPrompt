@@ -9,11 +9,12 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import health_router, screening_router
+from app.api import health_router, profile_router, screening_router
 from app.config.composition import build_screening_service
 from app.config.database import create_database_engine
 from app.config.dependencies import get_settings
@@ -23,11 +24,16 @@ from app.config.rate_limiter import RateLimitPolicy, SlidingWindowRateLimiter
 from app.config.request_size_limit import RequestSizeLimitMiddleware
 from app.config.security_headers import SecurityHeadersMiddleware
 from app.config.settings import Settings
-from app.config.startup_checks import check_database, check_llm_model
+from app.config.startup_checks import check_auth, check_database, check_llm_model
 from app.exception.handlers import register_exception_handlers
 from app.repository.memory.screening_records import InMemoryScreeningRecordWriter
+from app.repository.memory.user_repository import InMemoryUserRepository
 from app.repository.postgres.screening_records import PostgresScreeningRecordWriter
+from app.repository.postgres.user_repository import PostgresUserRepository
 from app.repository.screening_record_writer import ScreeningRecordWriter
+from app.repository.user_repository import UserRepository
+from app.service.auth.auth_service import AuthService
+from app.service.auth.supabase_identity_provider import SupabaseIdentityProvider
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +52,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app_: FastAPI) -> AsyncIterator[None]:
         engine = app_.state.database_engine
+        http_client: httpx.AsyncClient = app_.state.http_client
         if not resolved_settings.is_production:
             await check_llm_model(resolved_settings)
+            await check_auth(resolved_settings, http_client)
             if engine is not None:
                 await check_database(engine)
         yield
+        await http_client.aclose()
         if engine is not None:
             await engine.dispose()
 
@@ -81,17 +90,55 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     register_exception_handlers(app)
+    _wire_database(app, settings)
+    _wire_auth(app, settings)
     _wire_screening(app, settings)
     app.include_router(health_router.router)
-    if settings.unauthenticated_screening_enabled:
-        app.include_router(screening_router.router)
+    app.include_router(profile_router.router)
+    app.include_router(screening_router.router)
     return app
+
+
+def _wire_database(app: FastAPI, settings: Settings) -> None:
+    """PostgreSQL when DATABASE_URL is set (required in production); otherwise
+    repositories are in memory, which development may use without a database."""
+    if settings.database_url is None:
+        app.state.database_engine = None
+        logger.warning("No DATABASE_URL: data is kept in memory only (development)")
+        return
+    app.state.database_engine = create_database_engine(settings)
+
+
+def _wire_auth(app: FastAPI, settings: Settings) -> None:
+    """Login checks (Supabase Auth). Built on first use, so the app (and
+    /health) starts even before the Supabase keys are configured."""
+    engine = app.state.database_engine
+    users: UserRepository = PostgresUserRepository(engine) if engine is not None else InMemoryUserRepository()
+    http_client = httpx.AsyncClient(timeout=settings.auth_request_timeout_seconds)
+    app.state.http_client = http_client
+    app.state.auth_service = Lazy(
+        lambda: AuthService(
+            SupabaseIdentityProvider(
+                settings.supabase_url,
+                settings.supabase_secret_key,
+                settings.auth_request_timeout_seconds,
+                client=http_client,
+            ),
+            users,
+        )
+    )
+    window = settings.rate_limit_window_seconds
+    app.state.auth_rate_limiter = SlidingWindowRateLimiter(settings.auth_rate_limit_per_client, window)
+    app.state.profile_rate_limiter = SlidingWindowRateLimiter(settings.profile_rate_limit_per_user, window)
 
 
 def _wire_screening(app: FastAPI, settings: Settings) -> None:
     """Dependency injection for the screening endpoint. The service is built
     on first use, so the app (and /health) starts without an LLM key."""
-    records = _screening_records(app, settings)
+    engine = app.state.database_engine
+    records: ScreeningRecordWriter = (
+        PostgresScreeningRecordWriter(engine) if engine is not None else InMemoryScreeningRecordWriter()
+    )
     app.state.screening_records = records
     app.state.screening_service = Lazy(lambda: build_screening_service(settings, records=records))
     window = settings.rate_limit_window_seconds
@@ -99,18 +146,6 @@ def _wire_screening(app: FastAPI, settings: Settings) -> None:
         per_client=SlidingWindowRateLimiter(settings.screening_rate_limit_per_client, window),
         global_limit=SlidingWindowRateLimiter(settings.screening_rate_limit_global, window),
     )
-
-
-def _screening_records(app: FastAPI, settings: Settings) -> ScreeningRecordWriter:
-    """PostgreSQL when DATABASE_URL is set (required in production); otherwise
-    in memory, which development may use without a database."""
-    if settings.database_url is None:
-        app.state.database_engine = None
-        logger.warning("No DATABASE_URL: screening records are kept in memory only (development)")
-        return InMemoryScreeningRecordWriter()
-    engine = create_database_engine(settings)
-    app.state.database_engine = engine
-    return PostgresScreeningRecordWriter(engine)
 
 
 app = create_app()

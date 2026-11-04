@@ -22,6 +22,35 @@ class ConfigurationError(SentryPromptError):
     error_code = "configuration_error"
 
 
+class AuthenticationError(SentryPromptError):
+    """No valid login: missing, malformed, expired, forged or logged-out token."""
+
+    status_code = 401
+    error_code = "unauthenticated"
+
+    def __init__(self, message: str = "Please log in.") -> None:
+        super().__init__(message)
+
+
+class ForbiddenError(SentryPromptError):
+    """Logged in, but not allowed. error_code says why."""
+
+    status_code = 403
+    error_code = "forbidden"
+
+    def __init__(self, message: str, error_code: str = "forbidden") -> None:
+        super().__init__(message)
+        self.error_code = error_code
+
+
+class AuthUnavailableError(SentryPromptError):
+    """The login could not be checked (Supabase unreachable). Fails closed:
+    the request is refused, never let through."""
+
+    status_code = 503
+    error_code = "auth_unavailable"
+
+
 class RateLimitExceededError(SentryPromptError):
     status_code = 429
     error_code = "rate_limited"

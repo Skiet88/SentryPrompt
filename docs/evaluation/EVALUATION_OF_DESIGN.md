@@ -53,6 +53,7 @@ The deployed system targets a **small multi-user pilot** such as a class or depa
 | Supabase free project pauses after about a week without activity | High | Medium | Open the project before demos and presentations; restore from the dashboard if paused; the paid tier removes pausing if the system goes into regular use |
 | Supabase's built-in email sender is rate-limited and meant for testing | High | Medium | Configure a free-tier SMTP provider (e.g. Resend) in Supabase before real students register |
 | Dependence on Supabase as a provider | Low | Medium | Data is standard PostgreSQL and auth tokens are standard JWTs; the database can be moved to another Postgres host, and only the auth layer would need replacing |
+| Supabase Auth unreachable | Low | High (no logins can be checked) | Fails closed (503), so nothing is let through unchecked; the startup check reports whether Supabase is reachable and the secret key accepted; free-tier projects must not be paused before demos |
 | LLM provider retires the configured model | High (happened during development) | Medium | Fail closed (no prompt treated as clean); model is a single setting; development startup check and safe error logs (`HTTP 404 model_not_found`) make the cause obvious; see ../evaluation/MODEL_ARCHITECTURE.md §4 |
 
 ---

@@ -105,18 +105,37 @@ TEST_DATABASE_URL=postgresql://postgres:password@localhost:5432/postgres uv run 
 Without `TEST_DATABASE_URL` they are skipped; GitHub Actions always runs them.
 **Never point `TEST_DATABASE_URL` at your Supabase project.**
 
-## Trying the screening endpoint (development only)
+## Login (Supabase Auth)
 
-With the server running and a Groq key in `.env`:
+Every endpoint except `/health` requires a login: `Authorization: Bearer
+<access token>`. The backend asks Supabase to confirm each token, so a
+logged-out token stops working immediately; if Supabase can't be reached the
+request is refused (503), never let through. Role and status come only from
+the `profiles` table.
 
-```bash
-curl -s -X POST http://localhost:8000/api/prompts/screen \
-  -H 'Content-Type: application/json' \
-  -d '{"text": "My ID is 9203105800089 and I take sertraline"}'
-```
+| Endpoint | Needs |
+|---|---|
+| `POST /api/prompts/screen` | Verified, active account |
+| `GET /api/profile` | Login (also while suspended) |
+| `PUT /api/profile` | Verified, active account; only `displayName` can be changed |
+| `DELETE /api/profile` | Login (also while suspended); deletes the account and all its data |
 
-Or use the interactive docs at http://localhost:8000/docs. The endpoint is
-not served in production until login is added (backend plan, step 6).
+Set `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `SUPABASE_PUBLISHABLE_KEY` in
+`.env` (`docs/setup/SUPABASE_SETUP.md`, step 6B).
+
+## Trying the API (development)
+
+1. Get a token for your test account (step 6C of the setup guide):
+
+   ```bash
+   uv run python scripts/dev_login.py
+   ```
+
+2. Open http://localhost:8000/docs, click **Authorize**, paste the token, and
+   try `POST /api/prompts/screen` with
+   `{"text": "My ID is 9203105800089 and I take sertraline"}`.
+
+The token works like a password for about an hour; never share it.
 
 ## Troubleshooting
 
@@ -159,6 +178,7 @@ uv run pip-audit                 # known vulnerabilities in dependencies
 - Screening is rate-limited per client and in total (`SCREENING_RATE_LIMIT_*`); over the limit returns 429 with `Retry-After`.
 - Validation errors (422) never echo the submitted prompt back.
 - `/docs`, `/redoc` and `/openapi.json` are disabled in production.
+- Every endpoint except `/health` requires a login; login checks fail closed (503) if Supabase is unreachable.
 - Startup fails on unsafe settings (`*` in `CORS_ORIGINS`, non-HTTPS origins in production).
 - Server errors return a generic message; details go only to the server log,
   which masks tokens and API keys.
