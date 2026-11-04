@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from typing import Literal, Protocol
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlunsplit
 
 from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
+
+from .database_url import parse_database_url
 
 # libpq-style parameters that asyncpg does not accept in the URL; TLS is set
 # explicitly through DATABASE_SSL instead.
@@ -23,7 +25,7 @@ class DatabaseConfig(Protocol):
 
 def async_database_url(raw_url: str) -> str:
     """Normalise a Supabase/PostgreSQL URL for the asyncpg driver."""
-    parts = urlsplit(raw_url.strip())
+    parts = parse_database_url(raw_url)
     query = [(k, v) for k, v in parse_qsl(parts.query) if k not in _UNSUPPORTED_QUERY_PARAMS]
     return urlunsplit(("postgresql+asyncpg", parts.netloc, parts.path, urlencode(query), parts.fragment))
 

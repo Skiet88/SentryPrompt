@@ -77,8 +77,9 @@ async def check_database(engine: AsyncEngine, timeout_seconds: float = CHECK_TIM
     except (SQLAlchemyError, OSError, TimeoutError) as exc:
         # Exception type only: driver messages can include connection details.
         logger.warning(
-            "Database: not reachable or not migrated (%s). Check DATABASE_URL and run "
-            "'uv run alembic upgrade head'.",
+            "Database: not reachable or not migrated (%s). Check DATABASE_URL uses the Supabase "
+            "Session pooler (the Direct connection, db.<project>.supabase.co, only works over "
+            "IPv6), then run 'uv run alembic upgrade head'.",
             type(exc).__name__,
         )
         return None
