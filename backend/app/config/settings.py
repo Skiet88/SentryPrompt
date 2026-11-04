@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     supabase_publishable_key: str = ""
     auth_request_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
 
+    # ---- Chat ------------------------------------------------------------------
+    # Secret: AES-256 key for message content (NFR-011), base64 of 32 bytes.
+    # Generate with scripts/generate_key.py. Required in production.
+    message_encryption_key: SecretStr | None = None
+    chat_history_limit: int = Field(default=20, gt=0, le=200)
+    chat_reply_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+
     llm_provider: str = "groq"
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-20b"
@@ -97,6 +104,8 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_SSL must be 'require' in production")
         if self.is_production and (not self.supabase_url or self.supabase_secret_key is None):
             raise ValueError("SUPABASE_URL and SUPABASE_SECRET_KEY are required in production")
+        if self.is_production and self.message_encryption_key is None:
+            raise ValueError("MESSAGE_ENCRYPTION_KEY is required in production")
         return self
 
     @property

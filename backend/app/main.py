@@ -14,8 +14,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import health_router, profile_router, screening_router
-from app.config.composition import build_screening_service
+from app.api import conversation_router, health_router, profile_router, screening_router
+from app.config.composition import build_chat_service, build_screening_service
 from app.config.database import create_database_engine
 from app.config.dependencies import get_settings
 from app.config.lazy import Lazy
@@ -25,9 +25,18 @@ from app.config.request_size_limit import RequestSizeLimitMiddleware
 from app.config.security_headers import SecurityHeadersMiddleware
 from app.config.settings import Settings
 from app.config.startup_checks import check_auth, check_database, check_llm_model
+from app.exception import ConfigurationError
 from app.exception.handlers import register_exception_handlers
+from app.llm import LLMProvider, LLMProviderFactory
+from app.repository.conversation_repository import ConversationRepository, MessageRepository
+from app.repository.encryption.message_cipher import AesGcmMessageCipher
+from app.repository.memory.conversation_repository import InMemoryConversationStore
 from app.repository.memory.screening_records import InMemoryScreeningRecordWriter
 from app.repository.memory.user_repository import InMemoryUserRepository
+from app.repository.postgres.conversation_repository import (
+    PostgresConversationRepository,
+    PostgresMessageRepository,
+)
 from app.repository.postgres.screening_records import PostgresScreeningRecordWriter
 from app.repository.postgres.user_repository import PostgresUserRepository
 from app.repository.screening_record_writer import ScreeningRecordWriter
@@ -96,6 +105,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_router.router)
     app.include_router(profile_router.router)
     app.include_router(screening_router.router)
+    app.include_router(conversation_router.router)
     return app
 
 
@@ -140,12 +150,38 @@ def _wire_screening(app: FastAPI, settings: Settings) -> None:
         PostgresScreeningRecordWriter(engine) if engine is not None else InMemoryScreeningRecordWriter()
     )
     app.state.screening_records = records
-    app.state.screening_service = Lazy(lambda: build_screening_service(settings, records=records))
+    provider: Lazy[LLMProvider] = Lazy(lambda: LLMProviderFactory().create(settings))
+    screening = Lazy(lambda: build_screening_service(settings, records=records, provider=provider.get()))
+    app.state.screening_service = screening
+    conversations, messages = _conversation_stores(app, settings)
+    app.state.chat_service = Lazy(
+        lambda: build_chat_service(settings, conversations, messages.get(), screening.get(), provider.get())
+    )
     window = settings.rate_limit_window_seconds
     app.state.screening_rate_limits = RateLimitPolicy(
         per_client=SlidingWindowRateLimiter(settings.screening_rate_limit_per_client, window),
         global_limit=SlidingWindowRateLimiter(settings.screening_rate_limit_global, window),
     )
+
+
+def _conversation_stores(
+    app: FastAPI, settings: Settings
+) -> tuple[ConversationRepository, Lazy[MessageRepository]]:
+    """PostgreSQL with encrypted message content (NFR-011) when a database is
+    configured; the message store is built on first use, so screening works
+    even before MESSAGE_ENCRYPTION_KEY is set."""
+    engine = app.state.database_engine
+    if engine is None:
+        store = InMemoryConversationStore()
+        return store, Lazy(lambda: store)
+
+    def encrypted_messages() -> MessageRepository:
+        if settings.message_encryption_key is None:
+            raise ConfigurationError("MESSAGE_ENCRYPTION_KEY is not set (see scripts/generate_key.py)")
+        cipher = AesGcmMessageCipher.from_base64(settings.message_encryption_key.get_secret_value())
+        return PostgresMessageRepository(engine, cipher)
+
+    return PostgresConversationRepository(engine), Lazy(encrypted_messages)
 
 
 app = create_app()

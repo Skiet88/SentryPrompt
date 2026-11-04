@@ -141,6 +141,12 @@ PostgreSQL repositories (`backend/app/repository/postgres/`) use SQLAlchemy Core
 
 **Choice of implementation:** the app uses PostgreSQL when `DATABASE_URL` is set (required in production) and the in-memory implementations otherwise, so development works without a database.
 
+## 3C. Implementation Note (chat step: conversations and messages)
+
+`ConversationRepository` and `MessageRepository` (`backend/app/repository/conversation_repository.py`) deviate from the generic interface on purpose: **every method takes the owner's user ID** (`find_for_user`, `list_for_user`, `delete_for_user`), and there is no way to load a conversation by ID alone. An IDOR bug in the service layer therefore cannot reach another student's conversation. The message query also joins on the owner, so even a forged `Conversation` object with another user's ID reads nothing (tested).
+
+`PostgresMessageRepository` encrypts every message with `AesGcmMessageCipher` before writing and decrypts on reading (NFR-011): AES-256-GCM, a fresh random nonce per message, and the message and conversation IDs bound in as authenticated data, so a ciphertext moved to another row cannot be decrypted. The key (`MESSAGE_ENCRYPTION_KEY`) exists only in the backend's environment; the database and its dashboard see only ciphertext (tested against PostgreSQL). Appending messages and updating the conversation's `updated_at` happen in one transaction.
+
 ## 4. Storage Abstraction: Factory Pattern
 
 **Choice: Factory, not raw Dependency Injection framework.** For a solo project with two backends (in-memory for tests, PostgreSQL via SQLAlchemy for real use), a full DI container (e.g. `dependency-injector`) is more machinery than the problem needs — a small factory function achieves the same swappability with a fraction of the setup.

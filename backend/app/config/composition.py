@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from app.llm import LLMConfig, LLMProviderFactory
+from app.llm import LLMConfig, LLMProvider, LLMProviderFactory
+from app.repository.conversation_repository import ConversationRepository, MessageRepository
 from app.repository.memory.screening_records import InMemoryScreeningRecordWriter
 from app.repository.screening_record_writer import ScreeningRecordWriter
 from app.screening.classification_parser import ClassificationParser
@@ -17,6 +18,7 @@ from app.screening.explanation_generator import ExplanationGenerator
 from app.screening.prompt_template import CONTEXT_DETECTOR_PROMPT_VERSION, PromptTemplate
 from app.screening.rules.rule_based_detector import RuleBasedDetector
 from app.screening.rules.rule_source import JsonRuleSource, RuleSource
+from app.service.conversation.chat_service import ChatService
 from app.service.screening.screening_service import ScreeningService
 
 
@@ -32,9 +34,10 @@ def build_screening_service(
     rule_source: RuleSource | None = None,
     provider_factory: LLMProviderFactory | None = None,
     records: ScreeningRecordWriter | None = None,
+    provider: LLMProvider | None = None,
 ) -> ScreeningService:
     rule_set = (rule_source or JsonRuleSource()).load()
-    provider = (provider_factory or LLMProviderFactory()).create(config)
+    provider = provider or (provider_factory or LLMProviderFactory()).create(config)
     context_detector = ContextAwareDetector(
         provider,
         PromptTemplate.load(CONTEXT_DETECTOR_PROMPT_VERSION),
@@ -47,4 +50,29 @@ def build_screening_service(
         catalog=rule_set,
         explainer=ExplanationGenerator(rule_set),
         records=records or InMemoryScreeningRecordWriter(),
+    )
+
+
+class ChatConfig(Protocol):
+    @property
+    def chat_history_limit(self) -> int: ...
+    @property
+    def chat_reply_timeout_seconds(self) -> float: ...
+
+
+def build_chat_service(
+    config: ChatConfig,
+    conversations: ConversationRepository,
+    messages: MessageRepository,
+    screening: ScreeningService,
+    provider: LLMProvider,
+) -> ChatService:
+    """The chat shares the screening service's LLM provider."""
+    return ChatService(
+        conversations,
+        messages,
+        screening,
+        provider,
+        history_limit=config.chat_history_limit,
+        reply_timeout_seconds=config.chat_reply_timeout_seconds,
     )

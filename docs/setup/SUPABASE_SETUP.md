@@ -165,6 +165,15 @@ Do this once the backend's database step is on your machine
    SUPABASE_SECRET_KEY=       ← Value 2, the Secret key (sb_secret_...)
    SUPABASE_PUBLISHABLE_KEY=  ← the Publishable key (sb_publishable_...), not secret
    ```
+   Also generate the key that encrypts stored messages (not a Supabase
+   value) and put it in the same file:
+   ```
+   uv run python scripts/generate_key.py
+   ```
+   ```
+   MESSAGE_ENCRYPTION_KEY=    ← the output of the command above (SECRET)
+   ```
+   Keep a copy of this key in your password manager.
    Keep each setting **once** in the file (if a name appears twice, the last
    one wins).
 2. In a terminal in the `backend` folder, create the tables:

@@ -11,7 +11,7 @@
 |---|---|---|---|
 | `AuthService` | Verifies Supabase access tokens on every request; loads the caller's profile; profile updates and account deletion through Supabase's admin API | `UserRepository` (profiles) | Blocks unverified accounts from screening endpoints (FR-014) and suspended accounts from everything; rejects tokens whose session has ended (FR-016). Registration, login and reset themselves are done by Supabase Auth (AUTH_DESIGN.md §0), which also handles duplicate emails (FR-013) and generic login errors (FR-015) |
 | `ScreeningService` | Runs both detectors on every prompt (context-aware on redacted text), aggregates the result and explains every flag | `ScreeningResultRepository`, `FlaggedSpanRepository`, `EvaluationLogEntryRepository` | Enforces FR-004 (both detectors always run, never short-circuited); enforces NFR-009 (log entry is content-free, structurally, not by convention — see below) |
-| `ConversationService` | Persists approved messages, retrieves history, handles deletion | `ConversationRepository`, `MessageRepository` | A `Message` can only be created from a `Prompt` that has already passed through `ScreeningService` — enforced by requiring a `ScreeningResult` reference as a precondition, not just a code comment |
+| `ChatService` (implemented as `backend/app/service/conversation/chat_service.py`; called `ConversationService` in the original design) | Screens each prompt, sends approved prompts (rule-detected values redacted) to the AI, saves both messages, retrieves and deletes history | `ConversationRepository`, `MessageRepository` | A `Message` can only be created from a `Prompt` that has already passed through `ScreeningService` — enforced by requiring a `ScreeningResult` reference as a precondition, not just a code comment |
 | `AdminService` | Account management, audit logging | `UserRepository`, `AdminAuditLogRepository` | **Structurally has no dependency on `MessageRepository` or `ConversationRepository` at all** — not just "won't call it," the class doesn't have access to it, enforcing NFR-013 at the dependency-injection level |
 
 **Board note on `AdminService`:** this is the same enforcement pattern used for encryption in Increment 6 — a boundary that matters (admins never see message content) is made structurally impossible to violate by omitting the dependency entirely, rather than relying on a developer remembering not to call a method that exists. This is a deliberate, repeated design pattern across the codebase, not a one-off.
@@ -43,9 +43,11 @@ It depends only on interfaces (`Detector`, a category catalog, the explanation g
 | PUT | `/api/profile` | Edit own display name (FR-018); nothing else can be set | Yes, verified and active |
 | DELETE | `/api/profile` | Delete own account + all data (FR-020, NFR-014) | Yes (also while suspended or unverified) |
 | POST | `/api/prompts/screen` | Submit a prompt for screening (FR-001–FR-006); rate-limited per user and globally | Yes, verified and active |
-| GET | `/api/conversations` | List own conversation history (FR-019) | Yes |
-| GET | `/api/conversations/{id}` | View a specific conversation's messages | Yes, owner only |
-| DELETE | `/api/conversations/{id}` | Delete a conversation (FR-020) | Yes, owner only |
+| POST | `/api/conversations` | Start a conversation (optional `title`, `channel`) | Yes, verified and active |
+| GET | `/api/conversations` | List own conversation history, newest first (FR-019) | Yes (also while suspended) |
+| GET | `/api/conversations/{id}` | View a specific conversation's messages | Yes, owner only; someone else's conversation is a 404, identical to a missing one |
+| DELETE | `/api/conversations/{id}` | Delete a conversation and its messages (FR-020) | Yes, owner only (also while suspended) |
+| POST | `/api/conversations/{id}/messages` | Send a prompt: screened on the server; if clean, or `sendAnyway` is true, the redacted prompt goes to the AI and both messages are saved; otherwise `status: "needs_decision"` and nothing is sent or saved (FR-007 to FR-009) | Yes, verified and active; owner only; counts towards the screening rate limit |
 | GET | `/api/admin/users` | List all accounts (FR-021) | Yes, admin role |
 | POST | `/api/admin/users/{id}/suspend` | Suspend an account | Yes, admin role |
 | POST | `/api/admin/users/{id}/reinstate` | Reinstate a suspended account | Yes, admin role |
