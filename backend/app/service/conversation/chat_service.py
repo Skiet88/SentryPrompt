@@ -9,6 +9,8 @@
   phone numbers, emails, addresses) are ALWAYS replaced with placeholders
   before the prompt reaches the AI, even when sent anyway; the stored
   message is that redacted text too, so they are never kept.
+- A new conversation is titled from its first prompt, after redaction, so
+  a title never contains a detected value (and it is stored encrypted).
 - Conversations are only ever looked up together with their owner, and an
   unknown or someone else's conversation gives the same "not found"
   (no IDOR, and no hint that the conversation exists).
@@ -29,6 +31,7 @@ from app.repository.conversation_repository import ConversationRepository, Messa
 from app.screening.redaction import redact_with_map
 from app.service.screening.i_screening_service import IScreeningService
 from app.util.clock import utc_now
+from app.util.conversation_title import title_from_prompt
 
 from .chat_models import ConversationWithMessages, SendOutcome, SendStatus
 from .i_chat_service import IChatService
@@ -100,7 +103,13 @@ class ChatService(IChatService):
         user_message = build_message(conversation.conversation_id, MessageRole.USER, safe_text)
         assistant_message = build_message(conversation.conversation_id, MessageRole.ASSISTANT, reply)
         await self._messages.append(conversation, [user_message, assistant_message], utc_now())
-        return SendOutcome(SendStatus.SENT, screening, user_message, assistant_message)
+        title = conversation.title
+        if not history and title == DEFAULT_TITLE:
+            title = title_from_prompt(safe_text, fallback=DEFAULT_TITLE)
+            await self._conversations.set_title(conversation.conversation_id, user.user_id, title)
+        return SendOutcome(
+            SendStatus.SENT, screening, user_message, assistant_message, conversation_title=title
+        )
 
     async def _owned(self, user: User, conversation_id: str) -> Conversation:
         conversation = await self._conversations.find_for_user(conversation_id, user.user_id)

@@ -7,9 +7,10 @@ import uuid
 import pytest
 from sqlalchemy import text
 
-from app.factory.conversation_factory import build_conversation
+from app.factory.conversation_factory import DEFAULT_TITLE, build_conversation
 from app.factory.message_factory import build_message
 from app.repository.encryption.message_cipher import AesGcmMessageCipher, DecryptionError
+from app.repository.encryption.title_cipher import AesGcmTitleCipher
 from app.repository.postgres.conversation_repository import (
     PostgresConversationRepository,
     PostgresMessageRepository,
@@ -29,9 +30,11 @@ async def add_user(engine) -> str:
     return str(user_id)
 
 
-def setup(engine):
-    cipher = AesGcmMessageCipher(os.urandom(32))
-    return PostgresConversationRepository(engine), PostgresMessageRepository(engine, cipher), cipher
+def setup(engine, key: bytes | None = None):
+    key = key or os.urandom(32)
+    cipher = AesGcmMessageCipher(key)
+    conversations = PostgresConversationRepository(engine, AesGcmTitleCipher(key))
+    return conversations, PostgresMessageRepository(engine, cipher), cipher
 
 
 def conversation_with_messages(engine):
@@ -133,3 +136,71 @@ def test_list_is_newest_first(engine):
         second.conversation_id,
         first.conversation_id,
     ]
+
+
+# --- Titles: made from the first prompt, so encrypted like messages ---
+
+TITLE = "I take sertraline and need an extension"
+
+
+async def raw_titles(engine):
+    async with engine.connect() as connection:
+        rows = await connection.execute(text("SELECT id, title_ciphertext FROM public.conversations"))
+        return {str(r.id): r.title_ciphertext for r in rows}
+
+
+def test_title_round_trips_and_is_stored_only_as_ciphertext(engine):
+    conversations, *_ = setup(engine)
+    owner = run(add_user(engine))
+    conversation = run(conversations.create(build_conversation(owner, "webapp")))
+    assert run(conversations.set_title(conversation.conversation_id, owner, TITLE)) is True
+
+    found = run(conversations.find_for_user(conversation.conversation_id, owner))
+    assert found is not None and found.title == TITLE
+    stored = run(raw_titles(engine))[conversation.conversation_id]
+    assert stored is not None and b"sertraline" not in stored
+
+
+def test_default_title_is_stored_as_null(engine):
+    conversations, *_ = setup(engine)
+    owner = run(add_user(engine))
+    conversation = run(conversations.create(build_conversation(owner, "webapp")))
+    assert run(raw_titles(engine))[conversation.conversation_id] is None
+    assert run(conversations.list_for_user(owner))[0].title == DEFAULT_TITLE
+
+
+def test_set_title_is_owner_scoped(engine):
+    conversations, *_ = setup(engine)
+    owner, other = run(add_user(engine)), run(add_user(engine))
+    conversation = run(conversations.create(build_conversation(owner, "webapp")))
+    assert run(conversations.set_title(conversation.conversation_id, other, "hijacked")) is False
+    assert run(conversations.list_for_user(owner))[0].title == DEFAULT_TITLE
+
+
+def test_title_moved_to_another_conversation_falls_back_to_default(engine):
+    conversations, *_ = setup(engine)
+    owner = run(add_user(engine))
+    first = run(conversations.create(build_conversation(owner, "webapp", title=TITLE)))
+    second = run(conversations.create(build_conversation(owner, "webapp")))
+
+    async def copy_title():
+        async with engine.begin() as connection:
+            await connection.execute(
+                text(
+                    "UPDATE public.conversations SET title_ciphertext = "
+                    "(SELECT title_ciphertext FROM public.conversations WHERE id = :src) WHERE id = :dst"
+                ),
+                {"src": uuid.UUID(first.conversation_id), "dst": uuid.UUID(second.conversation_id)},
+            )
+
+    run(copy_title())
+    moved = run(conversations.find_for_user(second.conversation_id, owner))
+    assert moved is not None and moved.title == DEFAULT_TITLE
+
+
+def test_wrong_key_cannot_read_titles(engine):
+    conversations, *_ = setup(engine)
+    owner = run(add_user(engine))
+    run(conversations.create(build_conversation(owner, "webapp", title=TITLE)))
+    other_key, *_ = setup(engine, os.urandom(32))
+    assert run(other_key.list_for_user(owner))[0].title == DEFAULT_TITLE

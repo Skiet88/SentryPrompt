@@ -161,7 +161,8 @@ def test_account_deletion_cascades_but_keeps_audit_log(engine):
     run(
         execute(
             engine,
-            "INSERT INTO public.conversations VALUES (:c, :u, 'Essay help', 'webapp', now(), now())",
+            "INSERT INTO public.conversations (id, user_id, channel, created_at, updated_at) "
+            "VALUES (:c, :u, 'webapp', now(), now())",
             c=conversation_id,
             u=user_id,
         )

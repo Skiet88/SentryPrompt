@@ -1,15 +1,22 @@
-import { MessageSquare, SquarePen } from "lucide-react";
-import { Link, NavLink } from "react-router";
+import { MessageSquare, SquarePen, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Link, NavLink, useMatch, useNavigate } from "react-router";
+
+import { ApiError } from "@/api/apiClient";
+import type { ConversationSummary } from "@/api/types";
+import { useServices } from "@/app/services";
 
 import { useConversations } from "@/chat/conversationsStore";
+import { plainText, RedactedText } from "@/chat/RedactedText";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 import { UserMenu } from "./UserMenu";
 
-/** "Today 14:05", "Yesterday", or "3 Nov": all chats share a title, so the time tells them apart. */
+/** "Today 14:05", "Yesterday", or "3 Nov": shown when hovering over a chat. */
 export function chatDate(iso: string, now = new Date()): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -24,6 +31,28 @@ export function chatDate(iso: string, now = new Date()): string {
 /** Left sidebar: new chat at the top, recent chats in the middle, your account at the bottom. */
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const load = useConversations();
+  const { conversations } = useServices();
+  const navigate = useNavigate();
+  const open = useMatch("/c/:conversationId")?.params.conversationId;
+  const [toDelete, setToDelete] = useState<ConversationSummary | null>(null);
+
+  async function deleteChat() {
+    if (!toDelete) return;
+    try {
+      await conversations.remove(toDelete.conversationId);
+    } catch (e) {
+      // Already gone (404) counts as deleted; anything else is shown in the dialog.
+      if (!(e instanceof ApiError && e.status === 404)) {
+        throw new Error(e instanceof ApiError ? e.message : "Couldn't delete the chat. Please try again.", {
+          cause: e,
+        });
+      }
+    }
+    load.forget(toDelete.conversationId);
+    if (open === toDelete.conversationId) void navigate("/", { replace: true });
+    setToDelete(null);
+    onNavigate?.();
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -62,26 +91,47 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {load.status === "ready" && load.items.length > 0 && (
           <ul className="space-y-0.5">
             {load.items.map((c) => (
-              <li key={c.conversationId}>
+              <li key={c.conversationId} className="group relative">
                 <NavLink
                   to={`/c/${encodeURIComponent(c.conversationId)}`}
+                  title={chatDate(c.updatedAt) ? `Last used: ${chatDate(c.updatedAt)}` : undefined}
                   onClick={onNavigate}
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm hover:bg-hover",
+                      "flex items-center gap-2.5 rounded-lg py-2 pr-9 pl-2 text-sm hover:bg-hover",
                       isActive && "bg-hover font-medium",
                     )
                   }
                 >
                   <MessageSquare className="size-4 shrink-0 text-muted" aria-hidden />
-                  <span className="min-w-0 flex-1 truncate">{c.title}</span>
-                  <span className="shrink-0 text-xs font-normal text-muted">{chatDate(c.updatedAt)}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    <RedactedText text={c.title} compact />
+                  </span>
                 </NavLink>
+                <button
+                  type="button"
+                  onClick={() => setToDelete(c)}
+                  aria-label={`Delete chat: ${plainText(c.title)}`}
+                  className="absolute top-1/2 right-1 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-surface hover:text-danger focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </button>
               </li>
             ))}
           </ul>
         )}
       </nav>
+
+      <ConfirmDialog
+        open={toDelete !== null}
+        onOpenChange={(next) => !next && setToDelete(null)}
+        title="Delete this chat?"
+        confirmLabel="Delete"
+        busyLabel="Deleting…"
+        onConfirm={deleteChat}
+      >
+        <p>The chat and all its messages will be deleted permanently.</p>
+      </ConfirmDialog>
 
       <div className="border-t border-border p-2">
         <UserMenu onNavigate={onNavigate} />

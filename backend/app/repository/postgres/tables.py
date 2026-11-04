@@ -64,7 +64,8 @@ conversations = Table(
     metadata,
     Column("id", Uuid, primary_key=True),
     Column("user_id", Uuid, nullable=False),
-    Column("title", Text, nullable=False),
+    # Encrypted (TitleCipher); NULL means the default title.
+    Column("title_ciphertext", LargeBinary, nullable=True),
     Column("channel", Text, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),

@@ -73,6 +73,11 @@ describe("SafeMarkdown", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
   });
 
+  it("keeps single line breaks, so letters read as written", () => {
+    const { container } = render(<SafeMarkdown text={"Kind regards,\nThabo"} />);
+    expect(container.querySelector("br")).not.toBeNull();
+  });
+
   it("never renders HTML from the reply", () => {
     const { container } = render(
       <SafeMarkdown text={'Hi <script>alert(1)</script><img src=x onerror="alert(1)"><iframe src="https://evil.example"></iframe>'} />,

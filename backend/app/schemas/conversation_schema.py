@@ -70,6 +70,8 @@ class SendMessageResponse(_CamelModel):
     screening: ScreenPromptResponse
     user_message: MessageResponse | None
     assistant_message: MessageResponse | None
+    # Set when sent: the chat's title (made from the first, redacted prompt).
+    conversation_title: str | None
 
     @classmethod
     def from_outcome(cls, outcome: SendOutcome) -> SendMessageResponse:
@@ -80,4 +82,5 @@ class SendMessageResponse(_CamelModel):
             assistant_message=(
                 MessageResponse.from_message(outcome.assistant_message) if outcome.assistant_message else None
             ),
+            conversation_title=outcome.conversation_title,
         )

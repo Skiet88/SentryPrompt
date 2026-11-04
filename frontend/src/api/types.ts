@@ -55,5 +55,18 @@ export interface ConversationDetail extends ConversationSummary {
 }
 
 export type SendResult =
-  | { status: "sent"; screening: Screening; userMessage: ChatMessage; assistantMessage: ChatMessage }
-  | { status: "needs_decision"; screening: Screening; userMessage: null; assistantMessage: null };
+  | {
+      status: "sent";
+      screening: Screening;
+      userMessage: ChatMessage;
+      assistantMessage: ChatMessage;
+      /** The chat's title, made by the backend from the first (redacted) prompt. */
+      conversationTitle: string;
+    }
+  | {
+      status: "needs_decision";
+      screening: Screening;
+      userMessage: null;
+      assistantMessage: null;
+      conversationTitle: null;
+    };

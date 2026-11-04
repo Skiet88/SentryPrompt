@@ -111,7 +111,7 @@ erDiagram
     CONVERSATION {
         string conversationId PK
         string userId FK
-        string title
+        bytes titleCiphertext "encrypted; NULL = default"
         string channel
         datetime createdAt
         datetime updatedAt
@@ -162,6 +162,8 @@ The ERD above is the logical model. On Supabase it maps to PostgreSQL as follows
 - Deleting an account in `auth.users` removes its profile, conversations and messages through `ON DELETE CASCADE` in one transaction; the audit log, which has no foreign keys, is kept (NFR-014, FR-022).
 
 **Message encryption detail:** `messages.content_ciphertext` is `version (1 byte) | nonce (12 bytes) | ciphertext + tag`, produced by AES-256-GCM with the message and conversation IDs as authenticated data, so a ciphertext copied to another row (or another student's conversation) fails to decrypt.
+
+**Conversation titles** are made from the first prompt after redaction, so they are content too: `conversations.title_ciphertext` uses the same format and key, with the conversation ID and a "title" marker as authenticated data (a title can't be swapped with a message or another chat's title). NULL means the default title "New conversation". Added by migration `0002_encrypt_conversation_titles.py`, which replaced the earlier plain `title` column.
 
 **Database error logs:** when PostgreSQL rejects a row (for example a failed `CHECK`), its server log records the row's values, and on Supabase those logs are visible to anyone with dashboard access. This was observed in CI, where a test deliberately tried to store an ID number in a verdict column. The design keeps such logs free of personal content: the backend never sends plaintext prompts or messages to the database (message content is encrypted before it is written, NFR-011, and the evaluation tables hold no text).
 

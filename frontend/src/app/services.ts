@@ -7,8 +7,8 @@ import type { AuthGateway } from "@/auth/authGateway";
 /** Everything the pages use to talk to the outside world, created once in main.tsx. */
 export interface Services {
   auth: AuthGateway;
-  profile: Pick<ProfileApi, "get">;
-  conversations: Pick<ConversationApi, "list" | "create" | "get" | "send">;
+  profile: Pick<ProfileApi, "get" | "updateDisplayName" | "deleteAccount">;
+  conversations: Pick<ConversationApi, "list" | "create" | "get" | "send" | "remove">;
   /**
    * The address the app was opened with, captured before Supabase reads (and
    * removes) the one-time code from an email link.

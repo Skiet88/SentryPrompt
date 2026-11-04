@@ -42,19 +42,19 @@ describe("chat", () => {
     await typeAndSend("Explain recursion simply");
 
     expect(await screen.findByText("Here is my answer.")).toBeInTheDocument();
-    expect(screen.getByText("Explain recursion simply")).toBeInTheDocument();
+    expect(within(screen.getByRole("log")).getByText("Explain recursion simply")).toBeInTheDocument();
     const [created] = [...chats.chats.keys()];
     expect(router.state.location.pathname).toBe(`/c/${created}`);
     expect(chats.get).not.toHaveBeenCalled(); // same view: nothing reloaded
     expect(chats.sent).toEqual([{ conversationId: created, text: "Explain recursion simply", sendAnyway: false }]);
     const nav = screen.getByRole("navigation", { name: "Recent chats" });
-    expect(within(nav).getByText("New conversation")).toBeInTheDocument();
+    expect(within(nav).getByText("Explain recursion simply")).toBeInTheDocument();
     expect(screen.getByLabelText("Your prompt")).toHaveValue("");
   });
 
   it("asks before sending a flagged prompt and explains what the AI will see", async () => {
     const { services, chats } = signedIn();
-    chats.nextResults.push({ status: "needs_decision", screening: FLAGGED, userMessage: null, assistantMessage: null });
+    chats.nextResults.push({ status: "needs_decision", screening: FLAGGED, userMessage: null, assistantMessage: null, conversationTitle: null });
     renderApp("/", services);
     await typeAndSend(PROMPT);
 
@@ -70,7 +70,7 @@ describe("chat", () => {
 
   it("puts the prompt back for editing", async () => {
     const { services, chats } = signedIn();
-    chats.nextResults.push({ status: "needs_decision", screening: FLAGGED, userMessage: null, assistantMessage: null });
+    chats.nextResults.push({ status: "needs_decision", screening: FLAGGED, userMessage: null, assistantMessage: null, conversationTitle: null });
     renderApp("/", services);
     const user = await typeAndSend(PROMPT);
     await user.click(await screen.findByRole("button", { name: "Edit my prompt" }));
@@ -81,19 +81,20 @@ describe("chat", () => {
 
   it("sends anyway when the student chooses to", async () => {
     const { services, chats } = signedIn();
-    chats.nextResults.push({ status: "needs_decision", screening: FLAGGED, userMessage: null, assistantMessage: null });
+    chats.nextResults.push({ status: "needs_decision", screening: FLAGGED, userMessage: null, assistantMessage: null, conversationTitle: null });
     chats.nextResults.push({
       status: "sent",
       screening: FLAGGED,
       userMessage: { messageId: "u1", role: "user", content: "My ID is [REDACTED_SA_ID] and I take sertraline", createdAt: "" },
       assistantMessage: { messageId: "a1", role: "assistant", content: "Noted.", createdAt: "" },
+      conversationTitle: "My ID is [REDACTED_SA_ID] and I take sertraline",
     });
     renderApp("/", services);
     const user = await typeAndSend(PROMPT);
     await user.click(await screen.findByRole("button", { name: "Send anyway" }));
 
     expect(await screen.findByText("Noted.")).toBeInTheDocument();
-    expect(screen.getByTitle("ID number hidden from the AI")).toBeInTheDocument();
+    expect(screen.getAllByTitle("ID number hidden from the AI")).toHaveLength(2); // message and sidebar title
     expect(screen.queryByText(/9203105800089/)).not.toBeInTheDocument();
     expect(chats.sent.map((s) => s.sendAnyway)).toEqual([false, true]);
   });
@@ -107,7 +108,7 @@ describe("chat", () => {
       requiresDecision: true,
       notice: "We couldn't fully check your prompt for sensitive information right now. Review it before sending.",
     };
-    chats.nextResults.push({ status: "needs_decision", screening: unavailable, userMessage: null, assistantMessage: null });
+    chats.nextResults.push({ status: "needs_decision", screening: unavailable, userMessage: null, assistantMessage: null, conversationTitle: null });
     renderApp("/", services);
     await typeAndSend("Help with my essay");
     const dialog = await screen.findByRole("dialog", { name: "We couldn't fully check this prompt" });

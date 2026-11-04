@@ -142,7 +142,10 @@ an edited text (screened again). Values found by the rule-based detector
 replaced with placeholders before the AI sees the prompt, even when sent
 anyway, and that redacted text is what gets stored.
 
-Message content is encrypted (AES-256-GCM) before it reaches the database,
+A new chat is titled from its first sent prompt, after redaction (so a title
+never contains a detected value); the send answer includes `conversationTitle`.
+
+Message content and chat titles are encrypted (AES-256-GCM) before they reach the database,
 with `MESSAGE_ENCRYPTION_KEY` from `.env` (generate one with
 `uv run python scripts/generate_key.py`). Someone else's conversation always
 answers 404, exactly like one that doesn't exist.

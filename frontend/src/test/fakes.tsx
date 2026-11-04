@@ -128,6 +128,10 @@ export class FakeConversations {
     return chat;
   });
 
+  remove = vi.fn(async (id: string) => {
+    if (!this.chats.delete(id)) throw new ApiError(404, "not_found", "Conversation not found.");
+  });
+
   send = vi.fn(async (conversationId: string, text: string, sendAnyway: boolean): Promise<SendResult> => {
     this.sent.push({ conversationId, text, sendAnyway });
     const next = this.nextResults.shift();
@@ -135,8 +139,16 @@ export class FakeConversations {
     if (next) return next;
     const user: ChatMessage = { messageId: `u${this.sent.length}`, role: "user", content: text, createdAt: "2026-11-04T10:00:01Z" };
     const assistant: ChatMessage = { messageId: `a${this.sent.length}`, role: "assistant", content: this.reply, createdAt: "2026-11-04T10:00:02Z" };
-    this.chats.get(conversationId)?.messages.push(user, assistant);
-    return { status: "sent", screening: CLEAN, userMessage: user, assistantMessage: assistant };
+    const chat = this.chats.get(conversationId);
+    if (chat && chat.messages.length === 0 && chat.title === "New conversation") chat.title = text.slice(0, 60);
+    chat?.messages.push(user, assistant);
+    return {
+      status: "sent",
+      screening: CLEAN,
+      userMessage: user,
+      assistantMessage: assistant,
+      conversationTitle: chat?.title ?? "New conversation",
+    };
   });
 }
 
@@ -144,19 +156,31 @@ export function makeServices(
   overrides: { profile?: Profile | ApiError; conversations?: ConversationSummary[]; landingUrl?: string } = {},
 ) {
   const auth = new FakeAuthGateway();
-  const profileResult = overrides.profile ?? STUDENT;
+  let current: Profile | ApiError = overrides.profile ?? STUDENT;
+  const profile = {
+    deleted: false,
+    get: vi.fn(async () => {
+      if (current instanceof ApiError) throw current;
+      return current;
+    }),
+    updateDisplayName: vi.fn(async (displayName: string) => {
+      if (current instanceof ApiError) throw current;
+      if (current.status === "suspended") throw new ApiError(403, "account_suspended", "This account is suspended.");
+      current = { ...current, displayName };
+      return current;
+    }),
+    deleteAccount: vi.fn(async () => {
+      profile.deleted = true;
+    }),
+  };
+  const conversations = new FakeConversations(overrides.conversations);
   const services: Services = {
     auth,
-    profile: {
-      get: vi.fn(async () => {
-        if (profileResult instanceof ApiError) throw profileResult;
-        return profileResult;
-      }),
-    },
-    conversations: new FakeConversations(overrides.conversations),
+    profile,
+    conversations,
     landingUrl: new URL(overrides.landingUrl ?? "http://localhost:5173/"),
   };
-  return { services, auth, chats: services.conversations as FakeConversations };
+  return { services, auth, chats: conversations, profile };
 }
 
 export function renderApp(path: string, services: Services, state?: unknown) {

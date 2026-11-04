@@ -24,6 +24,11 @@ export class ConversationApi {
     return this.client.get<ConversationDetail>(`/api/conversations/${encodeURIComponent(conversationId)}`);
   }
 
+  /** Permanently deletes the chat and its messages (FR-020). */
+  remove(conversationId: string): Promise<void> {
+    return this.client.delete(`/api/conversations/${encodeURIComponent(conversationId)}`);
+  }
+
   send(conversationId: string, text: string, sendAnyway: boolean): Promise<SendResult> {
     return this.client.post<SendResult>(`/api/conversations/${encodeURIComponent(conversationId)}/messages`, {
       text,

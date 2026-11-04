@@ -10,6 +10,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { RegisterPage } from "@/pages/RegisterPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 
 export const routes: RouteObject[] = [
@@ -39,10 +40,7 @@ export const routes: RouteObject[] = [
               { path: "/c/:conversationId", element: null },
             ],
           },
-          {
-            path: "/settings",
-            element: <PlaceholderPage title="Settings" text="Your name, and deleting your account, arrive in part 3." />,
-          },
+          { path: "/settings", element: <SettingsPage /> },
           {
             path: "/admin",
             element: <PlaceholderPage title="Admin panel" text="Managing accounts arrives in part 4." />,
