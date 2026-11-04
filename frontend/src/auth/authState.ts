@@ -4,14 +4,17 @@ import type { Profile } from "@/api/types";
 
 export type AuthState =
   | { status: "loading" }
-  | { status: "signed_out" }
+  /** notice: a message for the login page, e.g. after deleting the account. */
+  | { status: "signed_out"; notice?: string }
   | { status: "signed_in"; profile: Profile }
   | { status: "unavailable"; message: string };
 
 export interface AuthContextValue {
   state: AuthState;
-  signOut(): Promise<void>;
+  signOut(notice?: string): Promise<void>;
   reload(): void;
+  /** Shows a profile the backend just returned (e.g. after changing the name). */
+  setProfile(profile: Profile): void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

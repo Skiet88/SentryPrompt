@@ -99,7 +99,9 @@ export function ChatView({
         setDecision({ text, screening: result.screening });
       } else {
         setMessages((m) => [...m, result.userMessage, result.assistantMessage]);
-        store.touch({ ...current, updatedAt: result.assistantMessage.createdAt });
+        const updated = { ...current, title: result.conversationTitle, updatedAt: result.assistantMessage.createdAt };
+        setSummary(updated);
+        store.touch(updated);
       }
     } catch (e) {
       setDraft(text);

@@ -40,6 +40,16 @@ class MessageCipher(ABC):
     def decrypt(self, ciphertext: bytes, *, message_id: str, conversation_id: str) -> str: ...
 
 
+def decode_key(encoded_key: str) -> bytes:
+    """MESSAGE_ENCRYPTION_KEY (base64) as bytes."""
+    try:
+        return base64.b64decode(encoded_key.strip(), validate=True)
+    except (binascii.Error, ValueError):
+        raise ConfigurationError(
+            "MESSAGE_ENCRYPTION_KEY must be base64 (see scripts/generate_key.py)"
+        ) from None
+
+
 def _associated_data(message_id: str, conversation_id: str) -> bytes:
     return f"sentryprompt.message.v1|{conversation_id}|{message_id}".encode()
 
@@ -52,13 +62,7 @@ class AesGcmMessageCipher(MessageCipher):
 
     @classmethod
     def from_base64(cls, encoded_key: str) -> AesGcmMessageCipher:
-        try:
-            key = base64.b64decode(encoded_key.strip(), validate=True)
-        except (binascii.Error, ValueError):
-            raise ConfigurationError(
-                "MESSAGE_ENCRYPTION_KEY must be base64 (see scripts/generate_key.py)"
-            ) from None
-        return cls(key)
+        return cls(decode_key(encoded_key))
 
     def encrypt(self, plaintext: str, *, message_id: str, conversation_id: str) -> bytes:
         nonce = os.urandom(NONCE_BYTES)

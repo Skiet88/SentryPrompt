@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return auth.onChange((event, session) => {
       if (event === "signed_out" || !session) {
         loadedUser.current = null;
-        setState({ status: "signed_out" });
+        setState((current) => (current.status === "signed_out" ? current : { status: "signed_out" }));
       } else if (event === "signed_in" && loadedUser.current !== session.userId) {
         setState({ status: "loading" });
         // Run outside the provider's callback (Supabase advises against awaiting inside it).
@@ -63,14 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       state,
+      setProfile: (profile) => setState({ status: "signed_in", profile }),
       reload: () => {
         setState({ status: "loading" });
         void start();
       },
-      signOut: async () => {
+      signOut: async (notice?: string) => {
         loadedUser.current = null;
         await auth.signOut("local").catch(() => undefined);
-        setState({ status: "signed_out" });
+        setState({ status: "signed_out", notice });
       },
     }),
     [auth, start, state],

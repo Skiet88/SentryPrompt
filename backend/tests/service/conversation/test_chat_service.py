@@ -154,3 +154,41 @@ def test_ai_failure_saves_nothing(problem):
 
 def test_rule_set_has_the_categories_used_for_placeholders():
     assert RULES.category_named("SA_ID").name == "SA_ID"
+
+
+# --- Titles from the first prompt ---
+
+
+def test_first_sent_prompt_titles_the_chat_after_redaction():
+    s = Setup(detector_reply=MEDICAL_REPLY)
+    conversation = run(s.chat.create_conversation(STUDENT, "webapp"))
+    outcome = run(s.chat.send(STUDENT, conversation.conversation_id, ID_AND_MEDICATION, send_anyway=True))
+    assert outcome.conversation_title == "My ID is [REDACTED_SA_ID] and I take sertraline"
+    assert "9203105800089" not in outcome.conversation_title
+    [listed] = run(s.chat.list_conversations(STUDENT))
+    assert listed.title == outcome.conversation_title
+
+
+def test_title_is_not_changed_by_later_prompts():
+    s = Setup()
+    conversation = run(s.chat.create_conversation(STUDENT, "webapp"))
+    run(s.chat.send(STUDENT, conversation.conversation_id, "Explain recursion."))
+    later = run(s.chat.send(STUDENT, conversation.conversation_id, "Now explain loops."))
+    assert later.conversation_title == "Explain recursion."
+    assert run(s.chat.list_conversations(STUDENT))[0].title == "Explain recursion."
+
+
+def test_a_chosen_title_is_kept():
+    s = Setup()
+    conversation = run(s.chat.create_conversation(STUDENT, "webapp", title="Essay help"))
+    run(s.chat.send(STUDENT, conversation.conversation_id, "Explain recursion."))
+    assert run(s.chat.list_conversations(STUDENT))[0].title == "Essay help"
+
+
+def test_no_title_from_a_prompt_that_was_not_sent():
+    s = Setup(detector_reply=MEDICAL_REPLY)
+    conversation = run(s.chat.create_conversation(STUDENT, "webapp"))
+    outcome = run(s.chat.send(STUDENT, conversation.conversation_id, ID_AND_MEDICATION))
+    assert outcome.status is SendStatus.NEEDS_DECISION
+    assert outcome.conversation_title is None
+    assert run(s.chat.list_conversations(STUDENT))[0].title == "New conversation"

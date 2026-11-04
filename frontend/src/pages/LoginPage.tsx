@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { useServices } from "@/app/services";
 import { AuthFailure } from "@/auth/authGateway";
 import { AUTH_MESSAGES } from "@/auth/authMessages";
+import { useAuth } from "@/auth/authState";
 import { safeReturnPath } from "@/auth/guards";
 import { emailError } from "@/auth/validation";
 import { Alert } from "@/components/ui/alert";
@@ -17,7 +18,9 @@ export function LoginPage() {
   const { auth } = useServices();
   const navigate = useNavigate();
   const location = useLocation();
-  const notice = (location.state as { notice?: string } | null)?.notice;
+  const { state } = useAuth();
+  const notice =
+    (location.state as { notice?: string } | null)?.notice ?? (state.status === "signed_out" ? state.notice : undefined);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldError, setFieldError] = useState<string>();

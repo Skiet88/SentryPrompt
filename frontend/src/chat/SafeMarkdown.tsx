@@ -1,12 +1,14 @@
 import type { ComponentProps } from "react";
 import Markdown, { defaultUrlTransform } from "react-markdown";
+import remarkBreaks from "remark-breaks";
 
 /**
  * Renders AI replies as Markdown, safely (SECURITY_RULES.md §1, §5):
  * - raw HTML in the reply is dropped, never rendered;
  * - only a small set of text elements is allowed; images are not, so a
  *   manipulated reply can't load a tracking image or leak data through a URL;
- * - links only work for http(s) and mailto, open in a new tab, and send no referrer.
+ * - links only work for http(s) and mailto, open in a new tab, and send no referrer;
+ * - single line breaks are kept (remark-breaks), so letters and lists read as written.
  */
 const ALLOWED = [
   "p", "br", "strong", "em", "del", "a", "ul", "ol", "li", "blockquote",
@@ -33,7 +35,7 @@ const components: ComponentProps<typeof Markdown>["components"] = {
 export function SafeMarkdown({ text }: { text: string }) {
   return (
     <div className="markdown">
-      <Markdown skipHtml allowedElements={ALLOWED} unwrapDisallowed urlTransform={safeUrl} components={components}>
+      <Markdown remarkPlugins={[remarkBreaks]} skipHtml allowedElements={ALLOWED} unwrapDisallowed urlTransform={safeUrl} components={components}>
         {text}
       </Markdown>
     </div>

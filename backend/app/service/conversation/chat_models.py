@@ -20,6 +20,8 @@ class SendOutcome:
     screening: ScreeningOutcome
     user_message: Message | None = None
     assistant_message: Message | None = None
+    # The conversation's title after sending (set from the first prompt).
+    conversation_title: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

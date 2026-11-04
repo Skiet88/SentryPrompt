@@ -9,6 +9,8 @@ export interface ConversationsStore {
   refresh(): void;
   /** Adds or moves a conversation to the top (after it was created or used). */
   touch(conversation: ConversationSummary): void;
+  /** Removes a deleted conversation from the list. */
+  forget(conversationId: string): void;
 }
 
 const Context = createContext<ConversationsStore | null>(null);
@@ -40,7 +42,11 @@ export function ConversationsProvider({ children }: { children: ReactNode }) {
     setItems((current) => [conversation, ...current.filter((c) => c.conversationId !== conversation.conversationId)]);
   }, []);
 
-  const value = useMemo(() => ({ status, items, refresh, touch }), [status, items, refresh, touch]);
+  const forget = useCallback((conversationId: string) => {
+    setItems((current) => current.filter((c) => c.conversationId !== conversationId));
+  }, []);
+
+  const value = useMemo(() => ({ status, items, refresh, touch, forget }), [status, items, refresh, touch, forget]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 

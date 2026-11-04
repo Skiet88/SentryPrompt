@@ -26,6 +26,10 @@ class ConversationRepository(ABC):
         """Most recently updated first."""
 
     @abstractmethod
+    async def set_title(self, conversation_id: str, user_id: str, title: str) -> bool:
+        """True if the title of a conversation owned by user_id was changed."""
+
+    @abstractmethod
     async def delete_for_user(self, conversation_id: str, user_id: str) -> bool:
         """True if a conversation owned by user_id was deleted (with its messages)."""
 

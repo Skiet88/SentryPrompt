@@ -53,8 +53,18 @@ The backend must allow `http://localhost:5173` in `CORS_ORIGINS` (the default).
 - AI replies are shown as Markdown through `SafeMarkdown`: HTML in a reply is
   dropped, images are never loaded, and links only work for http(s)/mailto,
   opening in a new tab without a referrer.
-- Chats have no titles from their content (a title would be stored
-  unencrypted), so the sidebar shows when each chat was last used.
+- Chats are titled by the backend from the first prompt, after redaction, and
+  titles are stored encrypted. Hidden values show as badges in the sidebar too.
+- Single line breaks in replies are kept (`remark-breaks`).
+
+## Settings and deleting
+
+- **Settings** (account menu, bottom left): change your display name; see
+  your email; delete your account. Deleting the account needs the word
+  "delete" typed first, then logs you out.
+- **Delete a chat:** the bin icon next to a chat in the sidebar (shown on
+  hover or keyboard focus; always on phones). Cancel is focused, so Enter
+  never deletes by accident.
 
 ## Code layout
 

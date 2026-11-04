@@ -69,6 +69,10 @@ def test_flagged_prompt_needs_decision_then_send_anyway_is_redacted():
     assert second["status"] == "sent"
     assert "9203105800089" not in second["userMessage"]["content"]
     assert "[REDACTED_SA_ID]" in llm.chat_received[-1][-1].content
+    assert first["conversationTitle"] is None
+    assert second["conversationTitle"] == "My ID is [REDACTED_SA_ID], help me fill in a form"
+    [listed] = client.get(BASE, headers=bearer()).json()
+    assert listed["title"] == second["conversationTitle"]
 
 
 @pytest.mark.parametrize(

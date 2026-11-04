@@ -30,6 +30,13 @@ class InMemoryConversationStore(ConversationRepository, MessageRepository):
         owned = [c for c in self._conversations.values() if c.user_id == user_id]
         return sorted(owned, key=lambda c: c.updated_at, reverse=True)
 
+    async def set_title(self, conversation_id: str, user_id: str, title: str) -> bool:
+        conversation = await self.find_for_user(conversation_id, user_id)
+        if conversation is None:
+            return False
+        self._conversations[conversation_id] = replace(conversation, title=title)
+        return True
+
     async def delete_for_user(self, conversation_id: str, user_id: str) -> bool:
         if await self.find_for_user(conversation_id, user_id) is None:
             return False

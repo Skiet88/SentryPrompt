@@ -31,6 +31,7 @@ from app.llm import LLMProvider, LLMProviderFactory
 from app.repository.admin_audit_log_repository import AdminAuditLogRepository
 from app.repository.conversation_repository import ConversationRepository, MessageRepository
 from app.repository.encryption.message_cipher import AesGcmMessageCipher
+from app.repository.encryption.title_cipher import AesGcmTitleCipher
 from app.repository.memory.conversation_repository import InMemoryConversationStore
 from app.repository.memory.screening_records import InMemoryScreeningRecordWriter
 from app.repository.memory.user_repository import InMemoryUserRepository
@@ -166,7 +167,9 @@ def _wire_screening(app: FastAPI, settings: Settings) -> None:
     app.state.screening_service = screening
     conversations, messages = _conversation_stores(app, settings)
     app.state.chat_service = Lazy(
-        lambda: build_chat_service(settings, conversations, messages.get(), screening.get(), provider.get())
+        lambda: build_chat_service(
+            settings, conversations.get(), messages.get(), screening.get(), provider.get()
+        )
     )
     window = settings.rate_limit_window_seconds
     app.state.screening_rate_limits = RateLimitPolicy(
@@ -177,22 +180,24 @@ def _wire_screening(app: FastAPI, settings: Settings) -> None:
 
 def _conversation_stores(
     app: FastAPI, settings: Settings
-) -> tuple[ConversationRepository, Lazy[MessageRepository]]:
-    """PostgreSQL with encrypted message content (NFR-011) when a database is
-    configured; the message store is built on first use, so screening works
-    even before MESSAGE_ENCRYPTION_KEY is set."""
+) -> tuple[Lazy[ConversationRepository], Lazy[MessageRepository]]:
+    """PostgreSQL with encrypted message content and titles (NFR-011) when a
+    database is configured; both stores are built on first use, so screening
+    works even before MESSAGE_ENCRYPTION_KEY is set."""
     engine = app.state.database_engine
     if engine is None:
         store = InMemoryConversationStore()
-        return store, Lazy(lambda: store)
+        return Lazy(lambda: store), Lazy(lambda: store)
 
-    def encrypted_messages() -> MessageRepository:
+    def encryption_key() -> str:
         if settings.message_encryption_key is None:
             raise ConfigurationError("MESSAGE_ENCRYPTION_KEY is not set (see scripts/generate_key.py)")
-        cipher = AesGcmMessageCipher.from_base64(settings.message_encryption_key.get_secret_value())
-        return PostgresMessageRepository(engine, cipher)
+        return settings.message_encryption_key.get_secret_value()
 
-    return PostgresConversationRepository(engine), Lazy(encrypted_messages)
+    return (
+        Lazy(lambda: PostgresConversationRepository(engine, AesGcmTitleCipher.from_base64(encryption_key()))),
+        Lazy(lambda: PostgresMessageRepository(engine, AesGcmMessageCipher.from_base64(encryption_key()))),
+    )
 
 
 app = create_app()
