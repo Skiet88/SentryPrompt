@@ -12,6 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.domain import User
 from app.exception import AuthenticationError, RateLimitExceededError
 from app.service.auth.i_auth_service import IAuthService
+from app.service.conversation.i_chat_service import IChatService
 from app.service.screening.i_screening_service import IScreeningService
 
 from .lazy import Provider
@@ -50,6 +51,11 @@ def _client_key(request: Request) -> str:
 def _limit(decision_allowed: bool, retry_after: int) -> None:
     if not decision_allowed:
         raise RateLimitExceededError(retry_after)
+
+
+def get_chat_service(request: Request) -> Provider[IChatService]:
+    provider: Provider[IChatService] = request.app.state.chat_service
+    return provider
 
 
 def get_auth_service(request: Request) -> Provider[IAuthService]:

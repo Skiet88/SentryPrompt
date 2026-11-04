@@ -186,3 +186,12 @@ def test_result_and_spans_are_saved_with_the_log_entry():
     assert asyncio.run(records.results.find_by_id(outcome.result.result_id)) == outcome.result
     saved = asyncio.run(records.spans.find_by_result_id(outcome.result.result_id))
     assert sorted(s.span_id for s in saved) == sorted(e.span.span_id for e in outcome.spans)
+
+
+def test_send_anyway_is_logged_as_override():
+    records = InMemoryScreeningRecordWriter()
+    asyncio.run(
+        make_service(FakeProvider(), log=records).screen("My ID is 9203105800089", "webapp", send_anyway=True)
+    )
+    [entry] = asyncio.run(records.log.find_all())
+    assert entry.outcome is EvaluationOutcome.OVERRIDE

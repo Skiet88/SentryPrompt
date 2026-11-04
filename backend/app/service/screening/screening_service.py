@@ -61,7 +61,9 @@ class ScreeningService(IScreeningService):
         self._explainer = explainer
         self._records = records
 
-    async def screen(self, raw_text: str, channel: SourceChannel | str) -> ScreeningOutcome:
+    async def screen(
+        self, raw_text: str, channel: SourceChannel | str, *, send_anyway: bool = False
+    ) -> ScreeningOutcome:
         prompt = build_prompt(raw_text, channel, status=PromptStatus.SCREENING)
 
         rule_result = await self._rule_detector.detect(prompt.raw_text)
@@ -79,10 +81,10 @@ class ScreeningService(IScreeningService):
             spans=tuple(sorted(spans, key=lambda e: (e.span.start_index, e.span.end_index))),
             notice=None if context_result.completed else self._explainer.unavailable_notice(),
         )
-        await self._record(outcome)
+        await self._record(outcome, send_anyway)
         return outcome
 
-    async def _record(self, outcome: ScreeningOutcome) -> None:
+    async def _record(self, outcome: ScreeningOutcome, send_anyway: bool = False) -> None:
         """Content-free by construction: none of the saved records has a field
         for prompt text. A storage failure never blocks the student's screening."""
         result: ScreeningResult = outcome.result
@@ -90,8 +92,9 @@ class ScreeningService(IScreeningService):
             entry_outcome, category_id = EvaluationOutcome.UNFLAGGED, None
         elif outcome.spans:
             # The first flagged category in the prompt; every span is kept
-            # individually as a FlaggedSpan.
-            entry_outcome, category_id = EvaluationOutcome.FLAGGED, outcome.spans[0].span.category_id
+            # individually as a FlaggedSpan. "Send anyway" is an override.
+            entry_outcome = EvaluationOutcome.OVERRIDE if send_anyway else EvaluationOutcome.FLAGGED
+            category_id = outcome.spans[0].span.category_id
         else:
             entry_outcome, category_id = EvaluationOutcome.UNAVAILABLE, None
         try:

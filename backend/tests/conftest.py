@@ -48,6 +48,10 @@ class FakeProvider(LLMProvider):
         self.error = error
         self.delay_seconds = delay_seconds
         self.received: list[tuple[str, str]] = []
+        self.chat_reply = "Here is an outline for your essay."
+        self.chat_error: Exception | None = None
+        self.chat_delay_seconds = 0.0
+        self.chat_received: list[list[ChatMessage]] = []
 
     @classmethod
     def from_config(cls, config):
@@ -62,8 +66,15 @@ class FakeProvider(LLMProvider):
         return self.reply
 
     async def chat(self, messages: Sequence[ChatMessage]) -> str:
-        return "reply"
+        self.chat_received.append(list(messages))
+        if self.chat_error:
+            raise self.chat_error
+        if self.chat_delay_seconds:
+            await asyncio.sleep(self.chat_delay_seconds)
+        return self.chat_reply
 
+
+TEST_MESSAGE_KEY = "dGVzdC1vbmx5LWtleS0zMi1ieXRlcy1sb25nISEhISE="
 
 # Valid production settings for tests. The database address is never contacted
 # (the engine connects lazily); .invalid is a reserved, unresolvable domain.
@@ -73,6 +84,8 @@ PROD_SETTINGS = {
     "database_url": "postgresql://sentry@db.invalid:5432/postgres",
     "supabase_url": "https://project.supabase.invalid",
     "supabase_secret_key": "sb_secret_test_value",
+    # Test-only AES key (32 zero-free bytes, base64); never used outside tests.
+    "message_encryption_key": TEST_MESSAGE_KEY,
 }
 
 # ---- authentication test doubles ------------------------------------------------

@@ -273,6 +273,7 @@ The 14 entities above are the logical model and remain the reference for the rep
 | User | No `passwordHash` | Passwords and hashes are held only by Supabase Auth; our code never sees them (NFR-012) |
 | EvaluationLogEntry | `timestampBucket` is the UTC hour, e.g. `2026-11-03T14:00Z` | Coarse enough that a log entry cannot be matched to an individual request by exact time (NFR-009) |
 | Prompt | `rawText` limited to 4,000 characters | FR-001's "defined max length"; well above a typical prompt (~200 words, NFR-010) |
+| Message | A user-role `content` is the prompt **as sent to the AI**, with rule-detected values replaced by placeholders such as `[REDACTED_SA_ID]` | ID, card and account numbers and similar are never stored (NFR-008); content is encrypted at rest (NFR-011) |
 
 Python naming is used in code (`prompt_id` for `promptId`, and so on); the attributes are otherwise as specified.
 
@@ -311,7 +312,7 @@ Entities are immutable data, so methods that only *read* an entity's own fields 
 | `User.register()`, `User.authenticate()` | Supabase Auth (AUTH_DESIGN.md §0) |
 | `User.deleteAccount()` | Account deletion service (AUTH_DESIGN.md §8.2) |
 | `Session.invalidate()`, `EmailVerificationToken.verify()`, `PasswordResetToken.resetPassword()` | Supabase Auth |
-| `Conversation.delete()` | `ConversationService` (FR-020) |
+| `Conversation.delete()` | `ChatService.delete_conversation()` (FR-020) |
 
 Two read-only helpers were added to `User`: `is_admin` and `can_submit_prompts` (verified and active, FR-014/FR-021), so the rule is defined once rather than repeated in every service.
 

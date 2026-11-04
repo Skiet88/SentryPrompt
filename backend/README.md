@@ -123,6 +123,30 @@ the `profiles` table.
 Set `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `SUPABASE_PUBLISHABLE_KEY` in
 `.env` (`docs/setup/SUPABASE_SETUP.md`, step 6B).
 
+## Chat (conversations with the AI)
+
+| Endpoint | What it does | Needs |
+|---|---|---|
+| `POST /api/conversations` | Start a conversation | Verified, active account |
+| `GET /api/conversations` | Your conversations, newest first | Login |
+| `GET /api/conversations/{id}` | One conversation with its messages | Login, owner only |
+| `DELETE /api/conversations/{id}` | Delete it and its messages | Login, owner only |
+| `POST /api/conversations/{id}/messages` | Send a prompt | Verified, active account, owner only |
+
+Sending screens the prompt on the server. If it's clean, it goes to the AI
+and both messages are saved. If it's flagged or couldn't be fully checked,
+the answer is `status: "needs_decision"` with the warnings, and nothing is
+sent or saved; send it again with `"sendAnyway": true` to override, or send
+an edited text (screened again). Values found by the rule-based detector
+(ID, card and account numbers, phone numbers, emails, addresses) are always
+replaced with placeholders before the AI sees the prompt, even when sent
+anyway, and that redacted text is what gets stored.
+
+Message content is encrypted (AES-256-GCM) before it reaches the database,
+with `MESSAGE_ENCRYPTION_KEY` from `.env` (generate one with
+`uv run python scripts/generate_key.py`). Someone else's conversation always
+answers 404, exactly like one that doesn't exist.
+
 ## Trying the API (development)
 
 1. Get a token for your test account (step 6C of the setup guide):
@@ -179,6 +203,7 @@ uv run pip-audit                 # known vulnerabilities in dependencies
 - Validation errors (422) never echo the submitted prompt back.
 - `/docs`, `/redoc` and `/openapi.json` are disabled in production.
 - Every endpoint except `/health` requires a login; login checks fail closed (503) if Supabase is unreachable.
+- Message content is encrypted at rest; conversations are only reachable by their owner.
 - Startup fails on unsafe settings (`*` in `CORS_ORIGINS`, non-HTTPS origins in production).
 - Server errors return a generic message; details go only to the server log,
   which masks tokens and API keys.

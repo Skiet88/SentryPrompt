@@ -161,6 +161,8 @@ The ERD above is the logical model. On Supabase it maps to PostgreSQL as follows
 - A trigger on `auth.users` creates the matching `profiles` row for every new account.
 - Deleting an account in `auth.users` removes its profile, conversations and messages through `ON DELETE CASCADE` in one transaction; the audit log, which has no foreign keys, is kept (NFR-014, FR-022).
 
+**Message encryption detail:** `messages.content_ciphertext` is `version (1 byte) | nonce (12 bytes) | ciphertext + tag`, produced by AES-256-GCM with the message and conversation IDs as authenticated data, so a ciphertext copied to another row (or another student's conversation) fails to decrypt.
+
 **Database error logs:** when PostgreSQL rejects a row (for example a failed `CHECK`), its server log records the row's values, and on Supabase those logs are visible to anyone with dashboard access. This was observed in CI, where a test deliberately tried to store an ID number in a verdict column. The design keeps such logs free of personal content: the backend never sends plaintext prompts or messages to the database (message content is encrypted before it is written, NFR-011, and the evaluation tables hold no text).
 
 **Access control:** Row Level Security is enabled on every `public` and `evaluation` table (including Alembic's own `alembic_version` table) with no policies, and all table access is revoked from Supabase's `anon` and `authenticated` roles, so the browser's publishable key cannot read or write application data directly. All data access goes through the FastAPI backend, which applies the rules in SERVICE_LAYER.md. The frontend talks to Supabase only for sign-in.
