@@ -119,12 +119,20 @@ to do with it now.
 ### Value 3: Database connection string (SECRET)
 
 1. Click the **Connect** button at the **top** of the project page.
-2. Choose **Connection string**, then **URI**, then **Session pooler** if
-   offered (it works on all networks).
-3. Copy the text starting with `postgresql://postgres.…`.
-4. Replace `[YOUR-PASSWORD]` in it with the database password from step 1.
+2. Choose **Connection string**, then set the method to **Session pooler**.
+   **Not "Direct connection":** that address (`db.<project>.supabase.co`)
+   only works over IPv6, and most home and campus networks are IPv4, which
+   fails with `getaddrinfo failed`. Not "Transaction pooler" either.
+3. Copy the text. It must look like
+   `postgresql://postgres.<project>:[YOUR-PASSWORD]@aws-0-<region>.pooler.supabase.com:5432/postgres`:
+   the user is `postgres.<project>` and the host ends in `.pooler.supabase.com`.
+4. Replace `[YOUR-PASSWORD]` **including the square brackets** with the
+   database password from step 1, so it reads `…:yourpassword@aws-0-…`.
    Forgotten it? **Project Settings → Database → Reset database password**.
-5. Save the complete string in your password manager.
+5. Use a password of **letters and numbers only** (long, e.g. 24+
+   characters). Characters such as `@ : / ? # [ ] %` must otherwise be
+   URL-encoded (`@` becomes `%40`), which is easy to get wrong.
+6. Save the complete string in your password manager.
 
 ### Nothing to do: JWKS URL
 
@@ -169,9 +177,25 @@ Do this once the backend's database step is on your machine
 4. Restart the server. The startup log shows
    `Database: connected (schema version 0001)`.
 
-If `alembic upgrade head` fails: a password error means the password in
-`DATABASE_URL` is wrong; "auth.users not found" means the URL points at a
-database that isn't your Supabase project.
+If `alembic upgrade head` fails:
+
+| Error | Cause | Fix |
+|---|---|---|
+| "DATABASE_URL contains square brackets" | The `[ ]` around the password were kept | Remove them: `…:yourpassword@…` |
+| `getaddrinfo failed` / host not found | Direct connection string (IPv6 only) | Use the **Session pooler** string (step 6, Value 3) |
+| "password authentication failed" | Wrong password | Reset it (Project Settings → Database) and update `.env` |
+| "auth.users not found" | URL points at a database that isn't your Supabase project | Copy the connection string again |
+
+To check which server `.env` points at without showing the password, run
+this in `backend`:
+
+```
+uv run python -c "from app.config.settings import Settings; from urllib.parse import urlsplit; u=urlsplit(Settings().database_url.get_secret_value()); print('host:', u.hostname, '| port:', u.port, '| user:', u.username)"
+```
+
+It should show a host ending in `.pooler.supabase.com`, port 5432 and user
+`postgres.<project>`. Never paste the connection string itself anywhere: if
+it is ever exposed, reset the database password.
 
 ## 7. Create the first admin (after the database tables exist)
 

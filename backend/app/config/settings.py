@@ -12,6 +12,8 @@ from typing import Literal
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .database_url import parse_database_url
+
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
@@ -65,10 +67,8 @@ class Settings(BaseSettings):
     def _postgres_url(cls, url: SecretStr | None) -> SecretStr | None:
         if url is None or not url.get_secret_value().strip():
             return None
-        scheme = url.get_secret_value().split("://", 1)[0]
-        if scheme not in ("postgresql", "postgres", "postgresql+asyncpg"):
-            # The URL itself is never included in the message.
-            raise ValueError("DATABASE_URL must be a postgresql:// connection string")
+        # Raises with a fixed message that never includes the URL or password.
+        parse_database_url(url.get_secret_value())
         return url
 
     @field_validator("supabase_url")
