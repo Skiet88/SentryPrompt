@@ -6,7 +6,8 @@
 4. Context-aware detector on the redacted text (fails closed, NFR-015).
 5. Aggregate both verdicts into a ScreeningResult (FR-004).
 6. Map every span to the original text and explain it (FR-005, FR-006).
-7. Record a content-free evaluation log entry (FR-011, NFR-009).
+7. Save the result, its flagged spans and a content-free evaluation log
+   entry together (FR-011, NFR-009).
 
 Both detectors run on every prompt and neither result is ever skipped
 (FR-004). The context-aware detector waits for the rule-based one (~1 ms)
@@ -29,7 +30,7 @@ from app.factory.evaluation_log_entry_factory import build_evaluation_log_entry
 from app.factory.flagged_span_factory import build_flagged_span
 from app.factory.prompt_factory import build_prompt
 from app.factory.screening_result_factory import build_screening_result
-from app.repository.evaluation_log_entry_repository import EvaluationLogEntryRepository
+from app.repository.screening_record_writer import ScreeningRecordWriter
 from app.screening.detection import DetectedSpan
 from app.screening.detector import Detector
 from app.screening.explanation_generator import CategoryCatalog, ExplanationGenerator
@@ -48,7 +49,7 @@ class ScreeningService(IScreeningService):
         context_detector: Detector,
         catalog: CategoryCatalog,
         explainer: ExplanationGenerator,
-        evaluation_log: EvaluationLogEntryRepository,
+        records: ScreeningRecordWriter,
     ):
         if rule_detector.source is not DetectorSource.RULE:
             raise ValueError("rule_detector must be a rule-based detector")
@@ -58,7 +59,7 @@ class ScreeningService(IScreeningService):
         self._context_detector = context_detector
         self._catalog = catalog
         self._explainer = explainer
-        self._evaluation_log = evaluation_log
+        self._records = records
 
     async def screen(self, raw_text: str, channel: SourceChannel | str) -> ScreeningOutcome:
         prompt = build_prompt(raw_text, channel, status=PromptStatus.SCREENING)
@@ -82,8 +83,8 @@ class ScreeningService(IScreeningService):
         return outcome
 
     async def _record(self, outcome: ScreeningOutcome) -> None:
-        """Content-free by construction: the entry has no field for prompt text.
-        A logging failure never blocks the student's screening."""
+        """Content-free by construction: none of the saved records has a field
+        for prompt text. A storage failure never blocks the student's screening."""
         result: ScreeningResult = outcome.result
         if result.aggregated_verdict is Verdict.NO_FLAG:
             entry_outcome, category_id = EvaluationOutcome.UNFLAGGED, None
@@ -94,11 +95,13 @@ class ScreeningService(IScreeningService):
         else:
             entry_outcome, category_id = EvaluationOutcome.UNAVAILABLE, None
         try:
-            await self._evaluation_log.save(
-                build_evaluation_log_entry(result.result_id, entry_outcome, category_id)
+            await self._records.record(
+                result,
+                [explained.span for explained in outcome.spans],
+                build_evaluation_log_entry(result.result_id, entry_outcome, category_id),
             )
         except Exception:
-            logger.exception("Could not record evaluation log entry for result %s", result.result_id)
+            logger.exception("Could not save screening records for result %s", result.result_id)
 
     def _explain(
         self,

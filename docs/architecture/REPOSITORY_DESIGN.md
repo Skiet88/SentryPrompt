@@ -133,6 +133,14 @@ The generic interface is implemented as three small capability interfaces in `ba
 
 `EvaluationLogEntryRepository` is the first one implemented, with an in-memory implementation (bounded to 10,000 entries) used until the database layer (step 5) adds the PostgreSQL implementation behind the same interface.
 
+## 3B. Implementation Note (backend plan, step 5: PostgreSQL)
+
+PostgreSQL repositories (`backend/app/repository/postgres/`) use SQLAlchemy Core with bound parameters only (SECURITY_RULES.md §1). Rows are turned back into entities through the entity factories, so stored data is validated when read. Implemented so far: `ScreeningResultRepository`, `FlaggedSpanRepository` and `EvaluationLogEntryRepository`, each with an in-memory and a PostgreSQL implementation. Profiles, conversations, messages and the audit log follow with the steps that use them.
+
+**Unit of Work for the screening write path:** `ScreeningRecordWriter` saves a screening's `ScreeningResult`, its `FlaggedSpan`s and its `EvaluationLogEntry` in **one database transaction**, so research data is never half-written (an integration test forces a failure mid-way and checks nothing was saved). Reads still go through the per-entity repositories.
+
+**Choice of implementation:** the app uses PostgreSQL when `DATABASE_URL` is set (required in production) and the in-memory implementations otherwise, so development works without a database.
+
 ## 4. Storage Abstraction: Factory Pattern
 
 **Choice: Factory, not raw Dependency Injection framework.** For a solo project with two backends (in-memory for tests, PostgreSQL via SQLAlchemy for real use), a full DI container (e.g. `dependency-injector`) is more machinery than the problem needs — a small factory function achieves the same swappability with a fraction of the setup.

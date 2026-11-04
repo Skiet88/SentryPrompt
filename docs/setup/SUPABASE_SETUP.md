@@ -144,10 +144,38 @@ this address out from the Project URL; nothing needs copying.
 `.env` files are listed in `.gitignore`, so they are never committed. In
 deployment, the same values go into the hosting platform's secret settings.
 
+## 6B. Put the values in `backend/.env` and create the tables
+
+Do this once the backend's database step is on your machine
+(`git pull`). Only `backend/.env` receives secrets; it is never committed.
+
+1. Open `backend/.env` (copy any new lines from `.env.example` first) and set:
+   ```
+   DATABASE_URL=     ← Value 3, the full connection string with your password
+   DATABASE_SSL=require
+   SUPABASE_URL=     ← Value 1, the Project URL
+   ```
+   Keep each setting **once** in the file (if a name appears twice, the last
+   one wins).
+2. In a terminal in the `backend` folder, create the tables:
+   ```
+   uv run alembic upgrade head
+   ```
+   It prints `Running upgrade -> 0001, Initial schema` and finishes without
+   errors. Running it again later is safe: it only applies new migrations.
+3. Check in the Supabase dashboard: **Table Editor** now lists `profiles`,
+   `conversations`, `messages` and `admin_audit_log` (schema `public`), and the
+   `evaluation` tables. Each shows **RLS enabled**.
+4. Restart the server. The startup log shows
+   `Database: connected (schema version 0001)`.
+
+If `alembic upgrade head` fails: a password error means the password in
+`DATABASE_URL` is wrong; "auth.users not found" means the URL points at a
+database that isn't your Supabase project.
+
 ## 7. Create the first admin (after the database tables exist)
 
-The `profiles` table is created by the backend's database migrations
-(backend plan, step 5). After that:
+The `profiles` table is created in step 6B. After that:
 
 1. Sign up through the app with the account that should become admin, and
    verify its email.
@@ -175,7 +203,7 @@ There is deliberately no way to do this from inside the application
 - [ ] Project URL, secret key and connection string saved in password manager
 
 **Later (backend plan step 5 onwards):**
-- [ ] Values added to `backend/.env` as `.env.example` describes
+- [ ] Values added to `backend/.env` and tables created (step 6B)
 - [ ] First admin promoted (step 7 of this guide)
 
 **Before any real student uses the app:**

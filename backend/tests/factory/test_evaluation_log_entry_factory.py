@@ -38,3 +38,12 @@ def test_unavailable_entry_has_no_category():
     assert build_evaluation_log_entry("result-1", "unavailable").outcome is EvaluationOutcome.UNAVAILABLE
     with pytest.raises(InvalidArgumentError, match="no category"):
         build_evaluation_log_entry("result-1", "unavailable", "cat-1")
+
+
+def test_rebuild_validates_stored_bucket():
+    from app.factory.evaluation_log_entry_factory import rebuild_evaluation_log_entry
+
+    entry = rebuild_evaluation_log_entry("log-1", "result-1", "unflagged", None, "2026-11-04T09:00Z")
+    assert (entry.log_id, entry.timestamp_bucket) == ("log-1", "2026-11-04T09:00Z")
+    with pytest.raises(InvalidArgumentError, match="timestamp_bucket"):
+        rebuild_evaluation_log_entry("log-1", "result-1", "unflagged", None, "yesterday")

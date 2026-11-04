@@ -5,7 +5,7 @@ import pytest
 
 from app.domain import DetectorSource, EvaluationOutcome, Verdict
 from app.exception import InvalidArgumentError, ProviderError
-from app.repository.memory.evaluation_log_entry_repository import InMemoryEvaluationLogEntryRepository
+from app.repository.memory.screening_records import InMemoryScreeningRecordWriter
 from app.screening.classification_parser import ClassificationParser
 from app.screening.context_aware_detector import ContextAwareDetector
 from app.screening.explanation_generator import UNAVAILABLE_NOTICE, ExplanationGenerator
@@ -24,14 +24,14 @@ def llm_flags(*flags: tuple[str, str]) -> str:
 
 
 def make_service(
-    provider: FakeProvider, timeout: float = 1.0, log: InMemoryEvaluationLogEntryRepository | None = None
+    provider: FakeProvider, timeout: float = 1.0, log: InMemoryScreeningRecordWriter | None = None
 ) -> ScreeningService:
     return ScreeningService(
         rule_detector=RuleBasedDetector(RULES),
         context_detector=ContextAwareDetector(provider, PROMPT, ClassificationParser(), timeout),
         catalog=RULES,
         explainer=ExplanationGenerator(RULES),
-        evaluation_log=log or InMemoryEvaluationLogEntryRepository(),
+        records=log or InMemoryScreeningRecordWriter(),
     )
 
 
@@ -144,9 +144,7 @@ def test_rejects_detectors_in_the_wrong_slots():
     rule = RuleBasedDetector(RULES)
     context = ContextAwareDetector(FakeProvider(), PROMPT, ClassificationParser())
     with pytest.raises(ValueError):
-        ScreeningService(
-            context, rule, RULES, ExplanationGenerator(RULES), InMemoryEvaluationLogEntryRepository()
-        )
+        ScreeningService(context, rule, RULES, ExplanationGenerator(RULES), InMemoryScreeningRecordWriter())
 
 
 # ---- evaluation log (FR-011, NFR-009) ----------------------------------------
@@ -162,9 +160,9 @@ def test_rejects_detectors_in_the_wrong_slots():
     ids=["clean", "flagged", "unavailable"],
 )
 def test_records_content_free_evaluation_entry(provider, text, expected_outcome, expected_category):
-    log = InMemoryEvaluationLogEntryRepository()
+    log = InMemoryScreeningRecordWriter()
     outcome = screen(provider, text, log=log)
-    [entry] = asyncio.run(log.find_all())
+    [entry] = asyncio.run(log.log.find_all())
     assert entry.result_id == outcome.result.result_id
     assert entry.outcome is expected_outcome
     expected_id = RULES.category_named(expected_category).category_id if expected_category else None
@@ -173,9 +171,18 @@ def test_records_content_free_evaluation_entry(provider, text, expected_outcome,
 
 
 def test_logging_failure_does_not_block_screening():
-    class BrokenLog(InMemoryEvaluationLogEntryRepository):
-        async def save(self, entity):
+    class BrokenLog(InMemoryScreeningRecordWriter):
+        async def record(self, result, spans, log_entry):
             raise RuntimeError("database down")
 
     outcome = screen(FakeProvider(), "My ID is 9203105800089", log=BrokenLog())
     assert outcome.result.aggregated_verdict is Verdict.FLAG
+
+
+def test_result_and_spans_are_saved_with_the_log_entry():
+    records = InMemoryScreeningRecordWriter()
+    text = "My ID is 9203105800089 and I take sertraline"
+    outcome = screen(FakeProvider(reply=llm_flags(("MEDICAL", "sertraline"))), text, log=records)
+    assert asyncio.run(records.results.find_by_id(outcome.result.result_id)) == outcome.result
+    saved = asyncio.run(records.spans.find_by_result_id(outcome.result.result_id))
+    assert sorted(s.span_id for s in saved) == sorted(e.span.span_id for e in outcome.spans)

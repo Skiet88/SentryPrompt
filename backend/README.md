@@ -79,6 +79,32 @@ Get a free Groq key at https://console.groq.com, and turn on Zero Data
 Retention under Settings -> Data Controls. Check http://localhost:8000/health
 and the interactive API docs at http://localhost:8000/docs.
 
+## Database (Supabase PostgreSQL)
+
+Set `DATABASE_URL`, `DATABASE_SSL` and `SUPABASE_URL` in `.env`
+(`docs/setup/SUPABASE_SETUP.md`, steps 6 and 6B), then create or update the
+tables:
+
+```bash
+uv run alembic upgrade head
+```
+
+Tables change only through migrations in `migrations/versions/`. Without
+`DATABASE_URL`, development keeps screening records in memory (a warning is
+logged); production refuses to start without a database.
+
+**Database tests** (repositories, RLS on every table, append-only logs,
+account-deletion cascade) need a PostgreSQL server you can create databases
+on. They create and drop their own throwaway database, with stand-ins for
+Supabase's `auth.users` and roles:
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres:password@localhost:5432/postgres uv run pytest
+```
+
+Without `TEST_DATABASE_URL` they are skipped; GitHub Actions always runs them.
+**Never point `TEST_DATABASE_URL` at your Supabase project.**
+
 ## Trying the screening endpoint (development only)
 
 With the server running and a Groq key in `.env`:
