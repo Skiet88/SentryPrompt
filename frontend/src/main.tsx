@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { AdminApi } from "@/api/adminApi";
 import { ApiClient } from "@/api/apiClient";
 import { ConversationApi } from "@/api/conversationApi";
 import { ProfileApi } from "@/api/profileApi";
@@ -18,7 +19,13 @@ function buildServices(): Services {
   const auth = SupabaseAuthGateway.create(config, window.location.origin);
   // A 401 from our backend means the login ended (logged out elsewhere, or suspended by ban).
   const api = new ApiClient(config.apiUrl, auth, () => void auth.signOut("local").catch(() => undefined));
-  return { auth, profile: new ProfileApi(api), conversations: new ConversationApi(api), landingUrl };
+  return {
+    auth,
+    profile: new ProfileApi(api),
+    conversations: new ConversationApi(api),
+    admin: new AdminApi(api),
+    landingUrl,
+  };
 }
 
 const container = document.getElementById("root");

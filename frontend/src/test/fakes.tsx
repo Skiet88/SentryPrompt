@@ -4,7 +4,16 @@ import { vi } from "vitest";
 
 import { ApiError } from "@/api/apiClient";
 import type { SendDecision } from "@/api/conversationApi";
-import type { ChatMessage, ConversationDetail, ConversationSummary, Profile, Screening, SendResult } from "@/api/types";
+import type {
+  AdminUser,
+  AuditLogEntry,
+  ChatMessage,
+  ConversationDetail,
+  ConversationSummary,
+  Profile,
+  Screening,
+  SendResult,
+} from "@/api/types";
 import { routes } from "@/app/routes";
 import { ServicesContext, type Services } from "@/app/services";
 import { AuthFailure, type AuthEvent, type AuthGateway, type AuthSession } from "@/auth/authGateway";
@@ -153,6 +162,53 @@ export class FakeConversations {
   });
 }
 
+/** Stands in for /api/admin, with the backend's rules (no self-action, no admin targets). */
+export class FakeAdmin {
+  users: AdminUser[];
+  log: AuditLogEntry[] = [];
+  loginBlockFails = false;
+  actingAs: string;
+
+  constructor(actingAs: string, users: AdminUser[]) {
+    this.actingAs = actingAs;
+    this.users = users;
+  }
+
+  listUsers = vi.fn(async (page: number) => this.users.slice((page - 1) * 50, page * 50));
+
+  suspend = vi.fn(async (userId: string, reason: string) => this.change(userId, "suspended", reason));
+
+  reinstate = vi.fn(async (userId: string, reason: string) => this.change(userId, "active", reason));
+
+  auditLog = vi.fn(async (offset: number) => [...this.log].reverse().slice(offset, offset + 50));
+
+  private change(userId: string, status: "active" | "suspended", reason: string) {
+    const user = this.users.find((u) => u.userId === userId);
+    if (!user) throw new ApiError(404, "not_found", "Account not found.");
+    if (userId === this.actingAs) throw new ApiError(400, "invalid_argument", "You cannot change the status of your own account.");
+    if (user.role === "admin") throw new ApiError(403, "target_is_admin", "Administrator accounts cannot be suspended here.");
+    let auditLogId: string | null = null;
+    if (user.status !== status) {
+      user.status = status;
+      auditLogId = `log-${this.log.length + 1}`;
+      this.log.push({
+        logId: auditLogId,
+        adminUserId: this.actingAs,
+        targetUserId: userId,
+        actionType: status === "suspended" ? "suspend" : "reinstate",
+        timestamp: new Date(Date.UTC(2026, 10, 4, 10, this.log.length)).toISOString(),
+        details: reason,
+      });
+    }
+    return { userId, status, auditLogId, loginBlockUpdated: !this.loginBlockFails };
+  }
+}
+
+export const ACCOUNTS: AdminUser[] = [
+  { userId: STUDENT.userId, email: STUDENT.email, emailVerified: true, displayName: "Thabo", role: "student", status: "active", createdAt: "2026-11-01T08:00:00Z" },
+  { userId: "00000000-0000-4000-8000-000000000003", email: "lerato@uni.ac.za", emailVerified: false, displayName: "", role: "student", status: "suspended", createdAt: "2026-10-20T08:00:00Z" },
+];
+
 export function makeServices(
   overrides: { profile?: Profile | ApiError; conversations?: ConversationSummary[]; landingUrl?: string } = {},
 ) {
@@ -175,13 +231,19 @@ export function makeServices(
     }),
   };
   const conversations = new FakeConversations(overrides.conversations);
+  const adminProfile = overrides.profile instanceof ApiError ? STUDENT : (overrides.profile ?? STUDENT);
+  const admin = new FakeAdmin(adminProfile.userId, [
+    ...ACCOUNTS.map((a) => ({ ...a })),
+    { userId: ADMIN.userId, email: "admin@uni.ac.za", emailVerified: true, displayName: "Admin", role: "admin" as const, status: "active" as const, createdAt: "2026-09-01T08:00:00Z" },
+  ]);
   const services: Services = {
     auth,
     profile,
     conversations,
+    admin,
     landingUrl: new URL(overrides.landingUrl ?? "http://localhost:5173/"),
   };
-  return { services, auth, chats: conversations, profile };
+  return { services, auth, chats: conversations, profile, admin };
 }
 
 export function renderApp(path: string, services: Services, state?: unknown) {

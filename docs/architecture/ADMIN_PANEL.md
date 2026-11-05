@@ -102,6 +102,18 @@ Rules enforced by the backend (not only the UI):
 
 ---
 
+## 5B. Frontend Implementation (part 4)
+
+`frontend/src/pages/AdminPage.tsx`, reached from the account menu (bottom left) → **Admin panel**, shown only to admins (the backend enforces the role on every request regardless).
+
+- **Header note:** "Account-level access only: admins can't see anyone's chats" (§3).
+- **Accounts:** name, email (with "Not verified"), joined date, status badge, and one action per row: **Suspend** for active students, **Reinstate** for suspended ones; "You" on your own row and no action on other admins. A search box filters the loaded page; Previous / Next move between pages of 50.
+- **Suspend / Reinstate dialog:** says what will happen, takes an optional reason (at most 500 characters, with a reminder not to include personal details or chat content), and shows errors in place. If the Supabase login block couldn't be updated, a warning says so and that repeating the action retries it.
+- **Activity log:** newest first, "Admin suspended Student" with the reason, time on each entry; read-only.
+- **Data:** the frontend calls only `GET /api/admin/users`, the suspend/reinstate endpoints and `GET /api/admin/audit-log` (`frontend/src/api/adminApi.ts`); it has no call that could fetch a conversation for another user. Names and reasons are rendered as text, never HTML.
+
+---
+
 ## 6. What This Document Does Not Cover
 
 - **Admin account creation/promotion** — the first admin is promoted by hand with one SQL statement in the Supabase dashboard (../setup/SUPABASE_SETUP.md, step 7). The application has deliberately no endpoint or screen that changes a user's role (AUTH_DESIGN.md §0.1), so admin promotion cannot be abused through the application.

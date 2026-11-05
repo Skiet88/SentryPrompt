@@ -70,6 +70,12 @@ The backend must allow `http://localhost:5173` in `CORS_ORIGINS` (the default).
   hover or keyboard focus; always on phones). Cancel is focused, so Enter
   never deletes by accident.
 
+## Admin panel
+
+Account menu → **Admin panel** (admins only): accounts with Suspend /
+Reinstate (optional reason, saved in the activity log) and the read-only
+activity log. Account-level only: no screen or API call reaches anyone's chats.
+
 ## Code layout
 
 | Folder | Responsibility |
@@ -78,6 +84,7 @@ The backend must allow `http://localhost:5173` in `CORS_ORIGINS` (the default).
 | `src/api/` | `ApiClient` (adds the login token, safe error messages) and one class per backend area |
 | `src/auth/` | `AuthGateway` interface, its Supabase implementation, login state, route guards |
 | `src/app/` | Routes and the services container (dependency injection, built in `main.tsx`) |
+| `src/admin/` | Admin panel: accounts table, suspend/reinstate dialog, activity log |
 | `src/chat/` | Chat screen, composer, warning dialog, safe Markdown, highlighting |
 | `src/layout/` | Login layout and the signed-in app shell (sidebar, account menu) |
 | `src/pages/` | One component per page |

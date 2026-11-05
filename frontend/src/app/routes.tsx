@@ -2,13 +2,13 @@ import type { RouteObject } from "react-router";
 
 import { PublicOnly, RequireAuth } from "@/auth/guards";
 import { AppShell } from "@/layout/AppShell";
+import { AdminPage } from "@/pages/AdminPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { ChatPage } from "@/pages/ChatPage";
 import { CheckEmailPage } from "@/pages/CheckEmailPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
-import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { RegisterPage } from "@/pages/RegisterPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
@@ -41,10 +41,7 @@ export const routes: RouteObject[] = [
             ],
           },
           { path: "/settings", element: <SettingsPage /> },
-          {
-            path: "/admin",
-            element: <PlaceholderPage title="Admin panel" text="Managing accounts arrives in part 4." />,
-          },
+          { path: "/admin", element: <AdminPage /> },
         ],
       },
     ],
