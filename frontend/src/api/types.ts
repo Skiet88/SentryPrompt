@@ -70,3 +70,32 @@ export type SendResult =
       assistantMessage: null;
       conversationTitle: null;
     };
+
+/** An account as an admin sees it: account-level fields only, never content (NFR-013). */
+export interface AdminUser {
+  userId: string;
+  email: string;
+  emailVerified: boolean;
+  displayName: string;
+  role: UserRole;
+  status: AccountStatus;
+  createdAt: string | null;
+}
+
+export interface StatusChange {
+  userId: string;
+  status: AccountStatus;
+  /** Null when the account already had this status (nothing new to record). */
+  auditLogId: string | null;
+  /** False: blocked in SentryPrompt, but the Supabase login block still needs retrying. */
+  loginBlockUpdated: boolean;
+}
+
+export interface AuditLogEntry {
+  logId: string;
+  adminUserId: string;
+  targetUserId: string;
+  actionType: "suspend" | "reinstate";
+  timestamp: string;
+  details: string;
+}
