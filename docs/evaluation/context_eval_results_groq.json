@@ -1,0 +1,495 @@
+{
+  "summary": {
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "prompt_version": "context_detector_v1",
+    "n_entries": 40,
+    "parse_failures": 0,
+    "unavailable_checks": 0,
+    "timeout_seconds": 3.0,
+    "median_latency_s": 1.106,
+    "max_latency_s": 2.288,
+    "context_aware": {
+      "TP": 7,
+      "FP": 3,
+      "FN": 7,
+      "TN": 23,
+      "precision": 0.7,
+      "recall": 0.5,
+      "false_positive_rate": 0.1154,
+      "accuracy": 0.75
+    },
+    "aggregated": {
+      "TP": 14,
+      "FP": 4,
+      "FN": 0,
+      "TN": 22,
+      "precision": 0.7778,
+      "recall": 1.0,
+      "false_positive_rate": 0.1538,
+      "accuracy": 0.9
+    }
+  },
+  "details": [
+    {
+      "entryId": "TS-001",
+      "category": "ID_NUMBER",
+      "groundTruth": "FLAG",
+      "contextOutcome": "FN",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-002",
+      "category": "ID_NUMBER",
+      "groundTruth": "FLAG",
+      "contextOutcome": "FN",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-003",
+      "category": "ID_NUMBER",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "FP",
+      "aggregatedOutcome": "FP",
+      "contextCategories": [
+        "INSTITUTIONAL"
+      ],
+      "parseFailed": false,
+      "contextVerdict": "FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-004",
+      "category": "ID_NUMBER",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-005",
+      "category": "FINANCIAL",
+      "groundTruth": "FLAG",
+      "contextOutcome": "FN",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-006",
+      "category": "FINANCIAL",
+      "groundTruth": "FLAG",
+      "contextOutcome": "FN",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-007",
+      "category": "FINANCIAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "FP",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-008",
+      "category": "FINANCIAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-009",
+      "category": "CONTACT_LOCATION",
+      "groundTruth": "FLAG",
+      "contextOutcome": "FN",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-010",
+      "category": "CONTACT_LOCATION",
+      "groundTruth": "FLAG",
+      "contextOutcome": "FN",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-011",
+      "category": "CONTACT_LOCATION",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-012",
+      "category": "CONTACT_LOCATION",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-013",
+      "category": "MEDICAL",
+      "groundTruth": "FLAG",
+      "contextOutcome": "TP",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [
+        "MEDICAL"
+      ],
+      "parseFailed": false,
+      "contextVerdict": "FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-014",
+      "category": "MEDICAL",
+      "groundTruth": "FLAG",
+      "contextOutcome": "TP",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [
+        "MEDICAL"
+      ],
+      "parseFailed": false,
+      "contextVerdict": "FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-015",
+      "category": "MEDICAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "FP",
+      "aggregatedOutcome": "FP",
+      "contextCategories": [
+        "MEDICAL"
+      ],
+      "parseFailed": false,
+      "contextVerdict": "FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-016",
+      "category": "MEDICAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-017",
+      "category": "MEDICAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "FP",
+      "aggregatedOutcome": "FP",
+      "contextCategories": [
+        "MEDICAL"
+      ],
+      "parseFailed": false,
+      "contextVerdict": "FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-018",
+      "category": "MEDICAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-019",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "FLAG",
+      "contextOutcome": "TP",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [
+        "INSTITUTIONAL"
+      ],
+      "parseFailed": false,
+      "contextVerdict": "FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-020",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "FLAG",
+      "contextOutcome": "TP",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [
+        "INSTITUTIONAL"
+      ],
+      "parseFailed": false,
+      "contextVerdict": "FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-021",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "FLAG",
+      "contextOutcome": "TP",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [
+        "INSTITUTIONAL"
+      ],
+      "parseFailed": false,
+      "contextVerdict": "FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-022",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-023",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-024",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-025",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-026",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-027",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-028",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-029",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-030",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-031",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-032",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-033",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-034",
+      "category": "CLEAN",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-035",
+      "category": "ID_NUMBER",
+      "groundTruth": "FLAG",
+      "contextOutcome": "FN",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-036",
+      "category": "ID_NUMBER",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-037",
+      "category": "MEDICAL",
+      "groundTruth": "FLAG",
+      "contextOutcome": "TP",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [
+        "MEDICAL"
+      ],
+      "parseFailed": false,
+      "contextVerdict": "FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-038",
+      "category": "INSTITUTIONAL",
+      "groundTruth": "FLAG",
+      "contextOutcome": "TP",
+      "aggregatedOutcome": "TP",
+      "contextCategories": [
+        "INSTITUTIONAL"
+      ],
+      "parseFailed": false,
+      "contextVerdict": "FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-039",
+      "category": "FINANCIAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    },
+    {
+      "entryId": "TS-040",
+      "category": "FINANCIAL",
+      "groundTruth": "NO_FLAG",
+      "contextOutcome": "TN",
+      "aggregatedOutcome": "TN",
+      "contextCategories": [],
+      "parseFailed": false,
+      "contextVerdict": "NO_FLAG",
+      "failureReason": null
+    }
+  ]
+}
