@@ -17,18 +17,17 @@ flowchart TD
     B --> C{Non-empty input?}
     C -- No --> D[Show validation error - FR-001]
     D --> A
-    C -- Yes --> E[/Fork: dispatch to both detectors\nin parallel - FR-004/]
-    E --> F[Rule-based detector - FR-002]
-    E --> G[Context-aware detector - FR-003]
-    F --> H[/Join: wait for both/]
-    G --> H
+    C -- Yes --> F[Rule-based detector - FR-002\nlocal, always completes]
+    F --> R[Redact rule findings - NFR-008]
+    R --> G[Context-aware detector on redacted text - FR-003\ntime limit; fails closed - NFR-015]
+    G --> H[/Both results kept separately - FR-004/]
     H --> I[Aggregate verdicts]
     I --> J{Flagged?}
-    J -- No --> K[Forward prompt to Ollama - FR-008]
+    J -- No --> K[Forward prompt to LLM provider - FR-008]
     J -- Yes --> L[Highlight flagged span(s) - FR-005]
     L --> M[Show plain-language explanation - FR-006]
     M --> N[Continue to Review Flagged Content - UC3]
-    K --> O[Ollama generates response - FR-009]
+    K --> O[LLM provider generates response - FR-009]
     O --> P[Return response via web app - FR-009]
     P --> Q([End])
 ```
@@ -45,7 +44,7 @@ flowchart TD
 flowchart TD
     A([Student types prompt into\nthird-party platform's input field]) --> B{Extension intercepts\nbefore native send fires?}
     B -- Yes --> C[Send text to Backend API\nfor screening]
-    C --> D[Join UC1 flow from step 3\n- rule-based + context-aware in parallel]
+    C --> D[Join UC1 flow from step 3\n- both detectors run again]
     D --> E{Flagged?}
     E -- No --> F[Allow platform's native\nsubmission to proceed]
     E -- Yes --> G[Continue to Review Flagged\nContent - UC3, shown in\nextension overlay]
@@ -68,12 +67,15 @@ flowchart TD
     B -- Edit --> C[Student modifies flagged text]
     C --> D[Resubmit]
     D --> E([Re-enters screening from scratch\n- UC1/UC2 step 3, no shortcut])
+    B -- Hide details and send --> R[Replace every flagged detail\nwherever it appears]
+    R --> S[Log redacted event\ncontent NOT logged - NFR-009]
+    S --> G
     B -- Send Anyway --> F[Log override event\ncontent NOT logged - NFR-009]
-    F --> G[Forward original prompt to Ollama]
+    F --> G[Forward original prompt to LLM provider]
     G --> H([Continue to UC7 - View AI Response])
     B -- Cancel --> I[Discard prompt]
     I --> J[Log cancellation\ncontent NOT logged - NFR-009]
-    J --> K([Nothing forwarded to Ollama\nor third-party platform - FR-008])
+    J --> K([Nothing forwarded to LLM provider\nor third-party platform - FR-008])
 ```
 
 ---
@@ -86,13 +88,14 @@ flowchart TD
 flowchart TD
     A([Student opens Register page]) --> B[Enter email + password]
     B --> C{Valid email format,\npassword meets strength rules,\nemail not already registered?}
-    C -- No --> D[Show inline error\n- duplicate email named explicitly]
+    C -- No, invalid format or weak password --> D[Show inline error]
+    C -- Email already registered --> D2[Same 'check your email' message\nas a new sign-up - never reveals\nthat the email exists]
     D --> B
     C -- Yes --> E[Create User: emailVerified = false]
     E --> F[Hash password - NFR-012]
     F --> G[Issue EmailVerificationToken\nwith expiry window]
     G --> H[Send verification email]
-    H --> I([Student can log in,\nprompt submission blocked])
+    H --> I([Student cannot log in\nuntil email is verified])
     I --> J{Student clicks link\nbefore expiry?}
     J -- Yes --> K[Mark token used = true\nSet User.emailVerified = true]
     K --> L([Account Active - full access])
@@ -112,14 +115,15 @@ flowchart TD
     A([Student enters email + password]) --> B{Credentials valid?}
     B -- No --> C[Generic error: invalid email\nor password - does not reveal which]
     C --> A
-    B -- Yes --> D{User.status = suspended?}
-    D -- Yes --> E[Reject login\naccount suspended]
-    D -- No --> F{emailVerified = true?}
-    F -- No --> G[Create Session\nprompt submission blocked]
-    F -- Yes --> H[Create Session\nfull access]
-    G --> I([Logged in, unverified])
+    B -- Yes --> F{emailVerified = true?}
+    F -- No --> G[Reject login:\nverify your email first\n- offer to resend the link]
+    F -- Yes --> D{Account suspended?}
+    D -- Yes --> E[Reject login:\naccount suspended]
+    D -- No --> H[Create Session\nfull access]
     H --> J([Logged in, active])
 ```
+
+**Implementation (Supabase Auth, AUTH_DESIGN.md §0.1):** Supabase rejects login for unverified accounts and for suspended (banned) accounts; the backend re-checks both on every request as defence in depth.
 
 **Notes:** the account-enumeration protection from FR-015's acceptance criterion (invalid email vs. invalid password must look identical to the student) is shown as a single merged error branch, not two separate ones — the diagram itself enforces the non-disclosure the requirement demands.
 
@@ -158,8 +162,8 @@ flowchart TD
     B -- Cancelled --> C[Discarded - never persisted]
     B -- Clean, or Flagged + Send Anyway --> D[Create Message\nrole = user, content encrypted at\nrest - NFR-011]
     D --> E[Append Message to Conversation\n- create Conversation if first message]
-    E --> F[Forward to Ollama]
-    F --> G[Ollama returns response]
+    E --> F[Forward to LLM provider]
+    F --> G[LLM provider returns response]
     G --> H[Create Message\nrole = assistant, content encrypted]
     H --> I[Append to same Conversation]
     I --> J([Conversation.updatedAt refreshed\nviewable in history - FR-019])

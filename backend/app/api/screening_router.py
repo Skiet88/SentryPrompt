@@ -1,0 +1,31 @@
+"""POST /api/prompts/screen: screen one prompt (FR-001 to FR-006).
+
+Requires a verified, active login (FR-014, SECURITY_RULES.md §2); rate
+limits apply per user and globally.
+"""
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+
+from app.config.dependencies import enforce_screening_rate_limit, get_screening_service
+from app.config.lazy import Provider
+from app.schemas.error_schema import ERROR_RESPONSES
+from app.schemas.screening_schema import ScreenPromptRequest, ScreenPromptResponse
+from app.service.screening.i_screening_service import IScreeningService
+
+router = APIRouter(prefix="/api/prompts", tags=["screening"])
+
+
+@router.post(
+    "/screen",
+    response_model=ScreenPromptResponse,
+    responses=ERROR_RESPONSES,
+    dependencies=[Depends(enforce_screening_rate_limit)],
+)
+async def screen_prompt(
+    body: ScreenPromptRequest,
+    service: Annotated[Provider[IScreeningService], Depends(get_screening_service)],
+) -> ScreenPromptResponse:
+    outcome = await service.get().screen(body.text, body.channel)
+    return ScreenPromptResponse.from_outcome(outcome)

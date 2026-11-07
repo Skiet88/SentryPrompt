@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "description": "SentryPrompt4 detection categories and rule patterns (NFR-005). Categories are listed in priority order: when matches from two rule-based categories overlap, the one listed first wins. Descriptions are shown to students as plain-language explanations (FR-006, NFR-001).",
+  "categories": [
+    {
+      "id": "194f0421-2924-5790-9cb6-f7c8030d7aa9",
+      "name": "SA_ID",
+      "tier": "rule-based",
+      "description": "This looks like a South African ID number. An ID number identifies you personally and can be used for identity fraud, so it should not be shared with an AI tool.",
+      "patterns": [
+        {
+          "id": "a0f318e4-f496-56ae-b3e7-2cd563ab3e51",
+          "regex": "\\b\\d{13}\\b",
+          "description": "13-digit South African ID number"
+        }
+      ]
+    },
+    {
+      "id": "b804d176-261a-53e7-b1d2-891b9e7efaf0",
+      "name": "BANK_CARD",
+      "tier": "rule-based",
+      "description": "This looks like a bank card number. Card numbers can be used to make payments in your name, so never share them with an AI tool.",
+      "patterns": [
+        {
+          "id": "d36031ad-3ed9-5883-8972-c012a4aacba2",
+          "regex": "\\b(?:\\d[ -]?){13,19}\\b",
+          "description": "13–19 digit card number, optionally grouped with spaces or dashes; must pass the Luhn checksum",
+          "validator": "luhn"
+        }
+      ]
+    },
+    {
+      "id": "a1f2ed9b-82b6-5c57-9029-5311038a5e2f",
+      "name": "BANK_ACCOUNT",
+      "tier": "rule-based",
+      "description": "This looks like a bank or loan account number. Account numbers are financial information that could be misused, so leave them out of your prompt.",
+      "patterns": [
+        {
+          "id": "c23edf0c-e4fb-5a66-a246-f7ab32e91301",
+          "regex": "(?i)\\b(?:account|acc|acct)\\.?(?:\\s{0,3}(?:number|no\\.?|num|#))?(?:\\s{0,3}(?:is|:|=))?\\s{0,3}\\d{8,12}\\b",
+          "description": "8–12 digit number directly after the word 'account' (or acc/acct)"
+        }
+      ]
+    },
+    {
+      "id": "98b99a58-5304-59e5-ab74-d6c3458e5896",
+      "name": "PHONE",
+      "tier": "rule-based",
+      "description": "This looks like a phone number. A phone number lets someone contact or identify you directly, so it is personal information.",
+      "patterns": [
+        {
+          "id": "45a449dc-2a7c-5cfe-8319-5785b54b0c28",
+          "regex": "(?<![\\w+])(?:\\+27|27|0)\\s?[6-8]\\d(?:[\\s-]?\\d){7}\\b",
+          "description": "South African mobile number (+27, 27 or 0 prefix); the lookbehind keeps a leading '+' inside the match"
+        }
+      ]
+    },
+    {
+      "id": "94e5fec6-abef-5295-9bbc-dd1786fcba09",
+      "name": "EMAIL",
+      "tier": "rule-based",
+      "description": "This looks like an email address. Email addresses are personal contact details and can identify you, so avoid including them.",
+      "patterns": [
+        {
+          "id": "d451f799-b410-59e9-ad89-f94836f219d3",
+          "regex": "(?i)\\b[a-z0-9._%+-]{1,64}@[a-z0-9-]{1,63}(?:\\.[a-z0-9-]{1,63}){0,8}\\.[a-z]{2,24}\\b",
+          "description": "Email address (lengths bounded to email limits to prevent ReDoS)"
+        }
+      ]
+    },
+    {
+      "id": "e60c7c12-7ccd-57a0-b1db-96309cae4899",
+      "name": "ADDRESS",
+      "tier": "rule-based",
+      "description": "This looks like a street address. Where you live is personal location information, so it should not be shared with an AI tool.",
+      "patterns": [
+        {
+          "id": "64c57235-2654-5df3-b31e-0b9bb7999aeb",
+          "regex": "\\b\\d{1,4}\\s+[A-Z][a-z]+(?:\\s+[A-Z][a-z]+){0,5}\\s+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Close|Cl)\\b",
+          "description": "House number, up to six capitalised words, and a street type"
+        }
+      ]
+    },
+    {
+      "id": "e5dc4212-46a6-57b5-bdf0-5dca0f673f2e",
+      "name": "STUDENT_NUMBER",
+      "tier": "rule-based",
+      "description": "This looks like a student number. Your student number identifies you at your university, so it counts as personal information.",
+      "patterns": [
+        {
+          "id": "40916e12-2736-572e-ae95-4db298eea1dc",
+          "regex": "(?i)\\b(?:stu(?:dent)?[\\s#-]{0,3})?[0-9]{7,9}\\b",
+          "description": "7–9 digit student number, optionally after 'stu' or 'student'"
+        }
+      ]
+    },
+    {
+      "id": "d84f6e06-9a8b-54c6-b23f-76bf8790f9a0",
+      "name": "MEDICAL",
+      "tier": "context-aware",
+      "description": "This mentions health information, such as a diagnosis, medication or mental health. Health details are especially sensitive personal information under POPIA, so consider leaving them out or describing your situation more generally.",
+      "patterns": []
+    },
+    {
+      "id": "8321d43e-d9cc-5a4a-9ee9-96c5f61a2992",
+      "name": "INSTITUTIONAL",
+      "tier": "context-aware",
+      "description": "This mentions confidential university information, such as disciplinary matters, someone else's results or unpublished exam content. Sharing it could breach university policy or another person's privacy.",
+      "patterns": []
+    }
+  ]
+}

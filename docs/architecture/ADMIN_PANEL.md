@@ -60,18 +60,65 @@ AUTH_DESIGN.md §6 already establishes that every admin endpoint checks `User.ro
 2. Admin clicks the context-sensitive action button (`Suspend` if currently active, `Reinstate` if currently suspended).
 3. Request sent to the corresponding endpoint (`POST /api/admin/users/{id}/suspend` or `/reinstate`).
 4. Backend sets `User.status` and writes one `AdminAuditLog` entry **atomically with** the status change (AUTH_DESIGN.md §6 — not a best-effort afterthought log call).
-5. On suspend, all active `Session` rows for that user are invalidated server-side (STATE_DIAGRAMS.md §3 — a suspended account should not retain a live session).
+5. On suspend, the backend also bans the account in Supabase Auth, which ends the student's ability to log in or refresh a token (STATE_DIAGRAMS.md §3 — a suspended account should not retain a live session). On reinstate, the ban is removed. If the Supabase call fails, the backend's own status check still blocks the account, and the admin is told the ban needs retrying (AUTH_DESIGN.md §0.1).
 6. Panel table refreshes to reflect the new status; audit log table gains one new row.
 
 **Screenshot evidence:** the captured `/admin` prototype screenshot shows the account table (one seeded student account, status `ACTIVE`, with a `Suspend` action) and an empty audit log table (`No actions recorded yet`) — an honest reflection of a freshly seeded prototype where no admin action has been performed yet, not a missing feature.
 
 ---
 
+## 5A. Backend Implementation (step 8)
+
+| Endpoint | Body / parameters | Answer |
+|---|---|---|
+| `GET /api/admin/users` | `page` (from 1), `perPage` (1 to 100, default 50) | Accounts: `userId`, `email`, `emailVerified`, `displayName`, `role`, `status`, `createdAt` |
+| `POST /api/admin/users/{id}/suspend` | optional `{"reason": "..."}` (at most 500 characters; no other field accepted) | `userId`, `status`, `auditLogId`, `loginBlockUpdated` |
+| `POST /api/admin/users/{id}/reinstate` | same as suspend | same as suspend |
+| `GET /api/admin/audit-log` | `limit` (1 to 100, default 50), `offset` | Entries, newest first: `logId`, `adminUserId`, `targetUserId`, `actionType`, `timestamp`, `details` |
+
+Rules enforced by the backend (not only the UI):
+
+- **Admins only.** Every route needs a verified, active account whose role in
+  our `profiles` table is `admin`. Everyone else gets 403; no login gets 401.
+  Requests are rate-limited per admin (`ADMIN_RATE_LIMIT_PER_USER`).
+- **No self-action, no admin targets.** An admin cannot suspend or reinstate
+  their own account (400), or suspend another admin (403 `target_is_admin`).
+  Roles change only by hand in the database (setup guide, step 7).
+- **Always audited.** The status change and its audit entry are written in
+  one database transaction, so there is never an unaudited action. The audit
+  log cannot be changed or deleted (database triggers) and survives account
+  deletion.
+- **Login block.** After the database change, the account is banned in
+  Supabase Auth (suspend) or unbanned (reinstate). If Supabase can't be
+  reached, the answer says `loginBlockUpdated: false`: the account is still
+  blocked by the backend's own status check on every request, and repeating
+  the action retries the ban without writing a second audit entry. When the
+  account already has the requested status, `auditLogId` is `null`.
+- **No content access (NFR-013).** `AdminService` is built only from the
+  identity provider, `UserRepository` and `AdminAuditLogRepository`. A test
+  fails the build if any admin module imports anything about conversations
+  or messages, and admins get 404 on other people's conversations like
+  everyone else.
+
+---
+
+## 5B. Frontend Implementation (part 4)
+
+`frontend/src/pages/AdminPage.tsx`, reached from the account menu (bottom left) → **Admin panel**, shown only to admins (the backend enforces the role on every request regardless).
+
+- **Header note:** "Account-level access only: admins can't see anyone's chats" (§3).
+- **Accounts:** name, email (with "Not verified"), joined date, status badge, and one action per row: **Suspend** for active students, **Reinstate** for suspended ones; "You" on your own row and no action on other admins. A search box filters the loaded page; Previous / Next move between pages of 50.
+- **Suspend / Reinstate dialog:** says what will happen, takes an optional reason (at most 500 characters, with a reminder not to include personal details or chat content), and shows errors in place. If the Supabase login block couldn't be updated, a warning says so and that repeating the action retries it.
+- **Activity log:** newest first, "Admin suspended Student" with the reason, time on each entry; read-only.
+- **Data:** the frontend calls only `GET /api/admin/users`, the suspend/reinstate endpoints and `GET /api/admin/audit-log` (`frontend/src/api/adminApi.ts`); it has no call that could fetch a conversation for another user. Names and reasons are rendered as text, never HTML.
+
+---
+
 ## 6. What This Document Does Not Cover
 
-- **Admin account creation/promotion** — how a `User.role` becomes `admin` in the first place is not specified here. At this design phase, the prototype assumes a seeded demo admin account (`admin@sentryprompt.dev`, visible on the landing page) rather than a self-service admin-promotion flow, which is out of scope for a solo capstone prototype.
+- **Admin account creation/promotion** — the first admin is promoted by hand with one SQL statement in the Supabase dashboard (../setup/SUPABASE_SETUP.md, step 7). The application has deliberately no endpoint or screen that changes a user's role (AUTH_DESIGN.md §0.1), so admin promotion cannot be abused through the application.
 - **Bulk actions** (e.g. suspend multiple accounts at once) — not required by FR-021 as written, not designed here.
-- **Audit log filtering/search** — the current design is a flat, reverse-chronological table sufficient for FR-022's requirement; pagination/filtering would be a build-phase refinement once real usage volume exists, not a design-phase requirement.
+- **Audit log filtering/search** — the current design is a flat, reverse-chronological table sufficient for FR-022's requirement, with simple `limit`/`offset` pagination; filtering would be a later refinement once real usage volume exists.
 
 ## Links
 - [../requirements/REQUIREMENTS.md](../requirements/../requirements/REQUIREMENTS.md)

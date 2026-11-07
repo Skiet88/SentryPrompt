@@ -1,0 +1,51 @@
+[project]
+name = "sentryprompt-backend"
+version = "0.1.0"
+description = "SentryPrompt4 backend: prompt screening API"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi[standard]",
+    "pydantic-settings",
+    "httpx",
+    "groq",
+    "google-genai",
+    "sqlalchemy[asyncio]>=2.1.7",
+    "asyncpg>=0.32.0",
+    "alembic>=1.20.1",
+    "cryptography>=50.0.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+    "pip-audit",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W/F: errors and style, I: imports, B: likely bugs, UP: modern syntax,
+# S: security (flake8-bandit), SIM: simplifications, RUF: ruff-specific.
+select = ["E", "W", "F", "I", "B", "UP", "S", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# assert is how pytest checks results.
+"tests/**" = ["S101"]
+# Migrations build DDL from constant table and role names defined in the
+# migration itself (never from input); review each migration for this.
+"migrations/**" = ["S608"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["app"]
+strict = true
+# Third-party SDKs are imported lazily inside providers.
+ignore_missing_imports = true

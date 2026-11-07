@@ -31,5 +31,8 @@
 - [Activity Diagrams](diagrams/ACTIVITY_DIAGRAMS.md)
 - [State Diagrams](diagrams/STATE_DIAGRAMS.md)
 
+## Setup
+- [Supabase Setup](setup/SUPABASE_SETUP.md)
+
 ## Research
 - [Research Proposal](research/Research Proposal.pdf)

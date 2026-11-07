@@ -35,7 +35,7 @@ This is not merely a UX gap — it is a legal exposure point. Under South Africa
 | 1 | Assess the level of awareness among higher-education students regarding the risks of sharing sensitive information through AI prompts | **Not addressed by this design-phase build** — this is a survey/awareness study, distinct from the system being designed here. Noted honestly as outside this project's individual technical scope, not silently dropped. |
 | 2 | Investigate the types of sensitive information students commonly include in AI prompts | Directly informs the five-category taxonomy in §3 below, and the hand-labeled `../evaluation/TEST_SET.csv` (40 entries spanning exactly these categories) |
 | 3 | Implement mitigation mechanisms that protect students from unintentional data exposure | The screening pipeline itself (FR-001–FR-009): highlight, explain, and the edit/send-anyway/cancel decision (../architecture/AUTH_DESIGN.md, working frontend prototype) |
-| 4 | Propose a context-aware NLP model capable of detecting sensitive information in student AI prompts in real time | MODEL_../architecture/ARCHITECTURE.md — the LLM-as-judge context-aware detector, run in parallel with the rule-based detector |
+| 4 | Propose a context-aware NLP model capable of detecting sensitive information in student AI prompts in real time | MODEL_../architecture/ARCHITECTURE.md — the LLM-as-judge context-aware detector, run on every prompt alongside the rule-based detector |
 
 **Honest scope note:** Objective 1 is a research-methods question (student awareness, likely requiring a survey instrument and ethics clearance) that sits outside what a solo, one-semester design-and-build project can also deliver alongside Objectives 2–4. This project's system design is built to serve Objectives 2–4 directly; Objective 1 is acknowledged here rather than quietly ignored, and would be genuine future work alongside this system, not a gap in this document.
 
@@ -43,14 +43,15 @@ This is not merely a UX gap — it is a legal exposure point. Under South Africa
 
 This project began as a single-semester, individually-built research prototype with a deliberately narrow scope. Following an Agile-driven scope review (permitted explicitly under the course's methodology, provided the project builds atop this original core rather than diverging from it), the scope was expanded to a full account-based platform: user registration, email verification, login, password reset, persistent conversation history, profile management, and an administrator panel.
 
-**What did not change:** the research core — a rule-based detector and a context-aware detector running in parallel on every prompt, compared against a hand-labeled test set — remains the actual contribution of the project (§6). The platform expansion sits around that core, not in place of it.
+**What did not change:** the research core — a rule-based detector and a context-aware detector both running on every prompt, compared against a hand-labeled test set — remains the actual contribution of the project (§6). The platform expansion sits around that core, not in place of it.
 
 **What changed, and the feasibility trade-off accepted with it:**
 
 - **Multi-user accounts, now in scope** — registration, email verification, login/logout, password reset, and profile management are now required (see REQUIREMENTS.md FR-013–FR-018). This is a real, accepted increase in build time relative to the original single-persona design, taken on knowingly rather than underestimated.
 - **Persistent conversation history, now in scope** — every approved (screened) prompt and its response are stored per-user as a `Conversation`/`Message` pair (REQUIREMENTS.md FR-019–FR-020), encrypted at rest (NFR-011). This is structurally distinct from the evaluation log, which remains content-free (NFR-009) — two data stores, two privacy postures, not a contradiction.
 - **An administrator role and panel, now in scope** — account-level management (status, verification, suspension) and an immutable audit log (FR-021–FR-022), deliberately excluding admin access to the *content* of any user's conversations (NFR-013), preserving the project's own privacy principle even internally.
-- **Local model backend (Ollama)** — unchanged; still removes dependency on paid API access and keeps model inference on-device.
+- **Hosted LLM through a provider interface (revised)** — originally a local Ollama model. Replaced by a free hosted API (Groq by default) so the application works once deployed, without Ollama installed on the server. Gemini and Ollama remain selectable by configuration. This still avoids paid API dependency (Groq's free tier covers the project's scale); the privacy cost of sending prompts off-device is handled by REQUIREMENTS.md NFR-008 (local redaction first, no-training providers only for real data).
+- **Managed database and authentication (revised for deployment)** — originally a local SQLite file and a custom-built login system. Replaced by PostgreSQL on Supabase (with an online dashboard for monitoring data and logs) and Supabase Auth, because a local file does not survive redeployment on hosting platforms and custom authentication is a large amount of security-sensitive code for a solo build. Both are on free tiers. See ../architecture/ARCHITECTURE.md, Tech Stack Decision.
 - **Two thin client surfaces sharing one backend service** — unchanged in principle; the backend now also carries the auth/account/admin services, still as a single shared service rather than duplicated per client.
 - **Screening method comparison, not a single black-box classifier** — unchanged; still the core research question and still achievable solo, independent of the account-layer work around it.
 
@@ -60,7 +61,7 @@ This project began as a single-semester, individually-built research prototype w
 
 ## 2. System Overview
 
-**Analogy:** Just as a web browser (Chrome) is not the internet but the interface that mediates access to it, SentryPrompt4 is not an AI model — it is the platform layer that mediates a student's access to one. The AI model (via Ollama) exists independently; SentryPrompt4's contribution is the screening and mitigation layer sitting between the student and the model.
+**Analogy:** Just as a web browser (Chrome) is not the internet but the interface that mediates access to it, SentryPrompt4 is not an AI model — it is the platform layer that mediates a student's access to one. The AI model (via the LLM provider) exists independently; SentryPrompt4's contribution is the screening and mitigation layer sitting between the student and the model.
 
 ### 2.1 Core Flow
 
@@ -71,7 +72,7 @@ Student types prompt
         Safe      → forward to model
         Sensitive → warn student, show flagged content + explanation,
                      student chooses: edit / send anyway / cancel
-   → (If sent) request forwarded to Ollama
+   → (If sent) request forwarded to the configured LLM provider (Groq by default)
    → Response returned to student
 ```
 
@@ -115,7 +116,7 @@ This preserves student agency (a hard-block system risks being disabled or bypas
 
 ## 5. Out of Scope (This Iteration)
 
-- Multi-model support (only Ollama-backed local models)
+- Choosing a model per conversation in the UI (the provider is selected by server configuration: Groq, Gemini or Ollama)
 - Institutional-level analytics/reporting dashboards (the admin panel covers account management and audit logging only, not usage analytics)
 - Cloud deployment / multi-tenant scaling across institutions
 - Training a custom model from scratch (context-aware detection may use an existing pretrained model or an LLM-as-judge call, not a model trained from zero)

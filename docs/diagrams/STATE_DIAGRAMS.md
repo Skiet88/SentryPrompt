@@ -23,16 +23,19 @@ stateDiagram-v2
     Validating --> Screening: Non-empty input accepted
 
     state Screening {
-        [*] --> RunningDetectors
-        RunningDetectors --> BothReturned: rule-based AND context-aware\ncomplete (FR-004, run in parallel)
+        [*] --> RuleDetection
+        RuleDetection --> Redacting: rule-based detector\ncompletes (local)
+        Redacting --> ContextDetection: findings redacted (NFR-008)
+        ContextDetection --> BothReturned: context-aware detector completes,\nor times out / fails (UNAVAILABLE, NFR-015)
         BothReturned --> Aggregating
         Aggregating --> [*]
     }
 
     Screening --> Clean: aggregatedVerdict = unflagged
     Screening --> Flagged: aggregatedVerdict = flagged
+    Screening --> Flagged: aggregatedVerdict = unavailable\n(context check incomplete — fail closed, NFR-015)
 
-    Clean --> Forwarded: auto-forwarded to Ollama (FR-008)
+    Clean --> Forwarded: auto-forwarded to LLM provider (FR-008)
 
     state Flagged {
         [*] --> AwaitingDecision: spans highlighted (FR-005)\nexplanation shown (FR-006)
@@ -45,14 +48,14 @@ stateDiagram-v2
     Overridden --> Forwarded: override logged distinctly (NFR-009)
     Cancelled --> Discarded: never forwarded (FR-008)
 
-    Forwarded --> ResponseReceived: Ollama responds (FR-009)
+    Forwarded --> ResponseReceived: LLM provider responds (FR-009)
     ResponseReceived --> [*]
     Discarded --> [*]
     Rejected --> [*]
 ```
 
 **Design notes:**
-- The `Screening` composite state has no branch point of its own — both detectors always run to completion before aggregation, enforcing FR-004 (parallel, not fallback) at the state-machine level, not just in prose.
+- The `Screening` composite state has no branch point of its own — both detectors always run before aggregation, enforcing FR-004 (both always run, never a fallback) at the state-machine level, not just in prose. The context-aware detector runs after redaction so it never sees rule-detected values (NFR-008).
 - `EditRequested` loops back to `Draft`, not directly to `Screening` — this makes explicit that an edited prompt is a *new* submission for state-machine purposes, matching UC4's postcondition ("re-screened from scratch").
 - `Overridden` and `Clean` both terminate at `Forwarded`, but they are logged as distinguishable events (NFR-009) — the state diagram intentionally keeps them as separate incoming transitions into the same state, rather than merging the arrows, to preserve that distinction visually.
 
@@ -68,7 +71,7 @@ stateDiagram-v2
     [*] --> Registered: register() (FR-013)
     Registered --> EmailVerificationPending: EmailVerificationToken issued (FR-014)
 
-    EmailVerificationPending --> EmailVerificationPending: login allowed,\nprompt submission blocked
+    EmailVerificationPending --> EmailVerificationPending: login blocked until verified\n(resend link available)
     EmailVerificationPending --> Verified: token used before expiry
     EmailVerificationPending --> TokenExpired: expiry window elapses
     TokenExpired --> EmailVerificationPending: new token requested
@@ -107,6 +110,8 @@ stateDiagram-v2
 
 ## 3. Session Lifecycle
 
+**Implementation note:** sessions are managed by Supabase Auth (../architecture/AUTH_DESIGN.md §0). This diagram remains the required behaviour; Supabase implements it, and the backend checks it on every request.
+
 **Traces to:** FR-015, FR-016, NFR-012
 **Entity modeled:** `Session`
 
@@ -137,6 +142,8 @@ stateDiagram-v2
 ---
 
 ## 4. Verification / Password Reset Token Lifecycle
+
+**Implementation note:** verification and reset tokens are managed by Supabase Auth (../architecture/AUTH_DESIGN.md §0); this diagram is the required behaviour.
 
 **Traces to:** FR-014, FR-017
 **Entities modeled:** `EmailVerificationToken`, `PasswordResetToken` (shared pattern — same state shape, different entity)

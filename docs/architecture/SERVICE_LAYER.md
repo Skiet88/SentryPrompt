@@ -9,47 +9,28 @@
 
 | Service | Responsibility | Uses Repositories | Key business rules enforced |
 |---|---|---|---|
-| `AuthService` | Registration, verification, login/session, password reset | `UserRepository`, `SessionRepository`, `EmailVerificationTokenRepository`, `PasswordResetTokenRepository` | Rejects duplicate emails (FR-013); blocks unverified accounts from screening endpoints (FR-014); never reveals whether a failed login was a bad email or bad password (FR-015) |
-| `ScreeningService` | Orchestrates rule-based + context-aware detection in parallel, aggregates result | `ScreeningResultRepository`, `FlaggedSpanRepository`, `EvaluationLogEntryRepository` | Enforces FR-004 (both detectors always run, never short-circuited); enforces NFR-009 (log entry is content-free, structurally, not by convention — see below) |
-| `ConversationService` | Persists approved messages, retrieves history, handles deletion | `ConversationRepository`, `MessageRepository` | A `Message` can only be created from a `Prompt` that has already passed through `ScreeningService` — enforced by requiring a `ScreeningResult` reference as a precondition, not just a code comment |
+| `AuthService` | Verifies Supabase access tokens on every request; loads the caller's profile; profile updates and account deletion through Supabase's admin API | `UserRepository` (profiles) | Blocks unverified accounts from screening endpoints (FR-014) and suspended accounts from everything; rejects tokens whose session has ended (FR-016). Registration, login and reset themselves are done by Supabase Auth (AUTH_DESIGN.md §0), which also handles duplicate emails (FR-013) and generic login errors (FR-015) |
+| `ScreeningService` | Runs both detectors on every prompt (context-aware on redacted text), aggregates the result and explains every flag | `ScreeningResultRepository`, `FlaggedSpanRepository`, `EvaluationLogEntryRepository` | Enforces FR-004 (both detectors always run, never short-circuited); enforces NFR-009 (log entry is content-free, structurally, not by convention — see below) |
+| `ChatService` (implemented as `backend/app/service/conversation/chat_service.py`; called `ConversationService` in the original design) | Screens each prompt, sends approved prompts (rule-detected values redacted) to the AI, saves both messages, retrieves and deletes history | `ConversationRepository`, `MessageRepository` | A `Message` can only be created from a `Prompt` that has already passed through `ScreeningService` — enforced by requiring a `ScreeningResult` reference as a precondition, not just a code comment |
 | `AdminService` | Account management, audit logging | `UserRepository`, `AdminAuditLogRepository` | **Structurally has no dependency on `MessageRepository` or `ConversationRepository` at all** — not just "won't call it," the class doesn't have access to it, enforcing NFR-013 at the dependency-injection level |
 
 **Board note on `AdminService`:** this is the same enforcement pattern used for encryption in Increment 6 — a boundary that matters (admins never see message content) is made structurally impossible to violate by omitting the dependency entirely, rather than relying on a developer remembering not to call a method that exists. This is a deliberate, repeated design pattern across the codebase, not a one-off.
 
-### Example: `ScreeningService` (Python)
+### `ScreeningService` (implemented: `backend/app/service/screening/screening_service.py`)
 
-```python
-class ScreeningService:
-    def __init__(self, rule_detector, context_detector, result_repo, log_repo):
-        self._rule_detector = rule_detector
-        self._context_detector = context_detector
-        self._result_repo = result_repo
-        self._log_repo = log_repo
+The service is a Facade: one call, `screen(raw_text, channel)`, runs the whole pipeline.
 
-    async def screen_prompt(self, prompt: Prompt) -> ScreeningResult:
-        if not prompt.rawText.strip():
-            raise EmptyPromptError()  # FR-001
+1. `build_prompt()` validates the text (not empty, at most 4,000 characters, FR-001).
+2. The rule-based detector runs on the original text (local, always completes).
+3. Everything it found is redacted (`redact_with_map`, NFR-008).
+4. The context-aware detector runs on the **redacted** text, with a time limit; a timeout, provider error or unreadable reply gives `UNAVAILABLE` (fail closed, NFR-015).
+5. `build_screening_result()` records both verdicts separately and computes the aggregate (FR-004).
+6. Every span is mapped back to the student's original text (context-aware spans were found in the redacted text) and explained in plain language (FR-005, FR-006).
+7. The result, its flagged spans and a content-free evaluation log entry are saved together through `ScreeningRecordWriter` (one transaction, REPOSITORY_DESIGN.md §3B). A storage failure is logged and never blocks the student's screening.
 
-        # FR-004: run both detectors independently, in parallel — not a fallback chain
-        rule_result, context_result = await asyncio.gather(
-            self._rule_detector.detect(prompt.rawText),
-            self._context_detector.detect(prompt.rawText),
-        )
+It depends only on interfaces (`Detector`, a category catalog, the explanation generator), injected by the composition root (`backend/app/config/composition.py`). It returns a `ScreeningOutcome` holding the `ScreeningResult`, the explained `FlaggedSpan`s and, when the context check could not complete, a notice for the student. The outcome contains no prompt text.
 
-        result = ScreeningResult(
-            promptId=prompt.promptId,
-            ruleBasedVerdict=rule_result.verdict,
-            contextAwareVerdict=context_result.verdict,
-            aggregatedVerdict=rule_result.verdict or context_result.verdict,
-        )
-        self._result_repo.save(result)
-
-        # NFR-009: log entry never receives prompt.rawText — the log method's signature
-        # doesn't even accept it, so this isn't a runtime check, it's a compile-time one.
-        self._log_repo.save(EvaluationLogEntry.from_result(result))  # no rawText parameter exists
-
-        return result
-```
+**Revision note:** an earlier design ran both detectors concurrently on the raw prompt text. That would send rule-detected values (ID numbers, card numbers) to the external LLM, contradicting NFR-008, so the context-aware detector now waits for redaction. Persistence (step 5) stores only positions, verdicts and categories, never prompt text (NFR-009).
 
 ---
 
@@ -57,23 +38,20 @@ class ScreeningService:
 
 | Method | Endpoint | Description | Auth Required |
 |---|---|---|---|
-| POST | `/api/auth/register` | Create a new account (FR-013) | No |
-| POST | `/api/auth/verify` | Verify email via token (FR-014) | No (token-based) |
-| POST | `/api/auth/login` | Log in, returns session (FR-015) | No |
-| POST | `/api/auth/logout` | Invalidate session (FR-016) | Yes |
-| POST | `/api/auth/reset-password/request` | Request reset token (FR-017) | No |
-| POST | `/api/auth/reset-password/confirm` | Set new password via token (FR-017) | No (token-based) |
-| GET | `/api/profile` | View own profile (FR-018) | Yes |
-| PUT | `/api/profile` | Edit own profile (FR-018) | Yes |
-| DELETE | `/api/profile` | Delete own account + all data (FR-020) | Yes |
-| POST | `/api/prompts/screen` | Submit a prompt for screening (FR-001–FR-008) | Yes, verified |
-| GET | `/api/conversations` | List own conversation history (FR-019) | Yes |
-| GET | `/api/conversations/{id}` | View a specific conversation's messages | Yes, owner only |
-| DELETE | `/api/conversations/{id}` | Delete a conversation (FR-020) | Yes, owner only |
-| GET | `/api/admin/users` | List all accounts (FR-021) | Yes, admin role |
-| POST | `/api/admin/users/{id}/suspend` | Suspend an account | Yes, admin role |
-| POST | `/api/admin/users/{id}/reinstate` | Reinstate a suspended account | Yes, admin role |
-| GET | `/api/admin/audit-log` | View admin action history (FR-022) | Yes, admin role |
+| — | *Supabase Auth* | Register, verify email, log in, log out, reset password (FR-013–FR-017). Called from the frontend with `supabase-js`; not backend endpoints (AUTH_DESIGN.md §0) | — |
+| GET | `/api/profile` | View own profile (FR-018) | Yes (also while suspended) |
+| PUT | `/api/profile` | Edit own display name (FR-018); nothing else can be set | Yes, verified and active |
+| DELETE | `/api/profile` | Delete own account + all data (FR-020, NFR-014) | Yes (also while suspended or unverified) |
+| POST | `/api/prompts/screen` | Submit a prompt for screening (FR-001–FR-006); rate-limited per user and globally | Yes, verified and active |
+| POST | `/api/conversations` | Start a conversation (optional `title`, `channel`) | Yes, verified and active |
+| GET | `/api/conversations` | List own conversation history, newest first (FR-019) | Yes (also while suspended) |
+| GET | `/api/conversations/{id}` | View a specific conversation's messages | Yes, owner only; someone else's conversation is a 404, identical to a missing one |
+| DELETE | `/api/conversations/{id}` | Delete a conversation and its messages (FR-020) | Yes, owner only (also while suspended) |
+| POST | `/api/conversations/{id}/messages` | Send a prompt: screened on the server; if clean, or `sendAnyway` is true, the redacted prompt goes to the AI and both messages are saved; with `hideFlagged`, every flagged detail (all occurrences, including health and university information) is redacted first; otherwise `status: "needs_decision"` and nothing is sent or saved (FR-007 to FR-009). The answer includes `conversationTitle` | Yes, verified and active; owner only; counts towards the screening rate limit |
+| GET | `/api/admin/users?page=1&perPage=50` | List accounts with role, status and verification (FR-021); at most 100 per page | Yes, verified and active admin |
+| POST | `/api/admin/users/{id}/suspend` | Suspend an account (optional body `{"reason": "..."}`, at most 500 characters); writes one audit entry and bans the login in Supabase | Yes, verified and active admin; not own account, not another admin |
+| POST | `/api/admin/users/{id}/reinstate` | Reinstate a suspended account; writes one audit entry and removes the Supabase ban | Yes, verified and active admin; not own account |
+| GET | `/api/admin/audit-log?limit=50&offset=0` | View admin action history, newest first (FR-022) | Yes, verified and active admin |
 
 **Deliberate omission, stated not hidden:** there is no `GET /api/admin/conversations/{userId}` endpoint — this is intentional, not an oversight, per NFR-013.
 
@@ -81,49 +59,60 @@ class ScreeningService:
 
 ## 3. Example Request/Response Schema
 
-### `POST /api/prompts/screen`
+### `POST /api/prompts/screen` (implemented: `backend/app/api/screening_router.py`)
 
-**Request:**
+**Request** (unknown fields are rejected, so a client can never set `userId`, `role` or similar):
 ```json
 {
-  "text": "My student number is 8402215, can you help me write a cover letter?"
+  "text": "My student number is 8402215, can you help me write a cover letter?",
+  "channel": "webapp"
 }
 ```
+`text`: 1–4,000 characters (FR-001). `channel`: `webapp` (default) or `extension`.
 
 **Response (flagged):**
 ```json
 {
-  "screeningResultId": "sr_a1b2c3",
+  "screeningResultId": "5f0c…",
   "aggregatedVerdict": "FLAG",
+  "ruleBasedVerdict": "FLAG",
+  "contextAwareVerdict": "NO_FLAG",
+  "requiresDecision": true,
+  "notice": null,
   "flags": [
     {
-      "category": "ID_NUMBER",
-      "span": "8402215",
+      "category": "STUDENT_NUMBER",
+      "startIndex": 21,
+      "endIndex": 28,
       "detectorSource": "rule",
-      "explanation": "This looks like a student or ID number, which could expose your identity if shared with a third-party AI platform."
+      "explanation": "This looks like a student number. Your student number identifies you at your university, so it counts as personal information."
     }
   ]
 }
 ```
 
-**Response (clean):**
-```json
-{
-  "screeningResultId": "sr_d4e5f6",
-  "aggregatedVerdict": "NO_FLAG",
-  "flags": []
-}
-```
+**Response (context-aware check unavailable, fail closed, NFR-015):** `aggregatedVerdict` is `UNAVAILABLE` (unless a rule flagged something), `requiresDecision` is `true`, and `notice` is *"We couldn't fully check your prompt for sensitive information right now. Review it before sending."*
+
+**Response (clean):** `aggregatedVerdict` `NO_FLAG`, `requiresDecision` `false`, `flags` empty.
+
+**Design changes from the original draft:**
+- Flags return **positions** (`startIndex`, `endIndex`) instead of the flagged text. The client already has the prompt and highlights it by position (FR-005); not repeating sensitive values in responses keeps them out of browser tools and proxy logs (data minimisation).
+- Both detectors' verdicts are returned, along with `requiresDecision` and `notice`, so the UI can show the edit / send anyway / cancel choice for flagged *and* unchecked prompts (FR-007, NFR-015).
 
 ### Error Responses
 
-| Status | Condition | Example |
+| Status | Condition | Body |
 |---|---|---|
-| 400 | Empty prompt submitted (FR-001) | `{"error": "PROMPT_EMPTY", "message": "Prompt text cannot be empty."}` |
-| 401 | Missing/invalid session | `{"error": "UNAUTHENTICATED", "message": "Please log in."}` |
-| 403 | Verified-only or admin-only endpoint accessed without the right role/state | `{"error": "FORBIDDEN", "message": "Email verification required before screening prompts."}` |
-| 404 | Conversation/user not found, or not owned by requester (same response for both, to avoid leaking existence — same principle as FR-015's login error handling) | `{"error": "NOT_FOUND"}` |
-| 429 | *(future work, not required at this scope)* — noted here as a gap, not silently absent: no rate limiting is designed yet for `/api/prompts/screen`, which is a real risk against NFR-010's latency budget under repeated calls | — |
+| 400 | Prompt is only whitespace (FR-001) | `{"error": "invalid_argument", "message": "Prompt text cannot be empty"}` |
+| 401 | No token, or a forged, expired or logged-out token. Includes `WWW-Authenticate: Bearer` | `{"error": "unauthenticated", "message": "Please log in."}` |
+| 403 | Logged in but not allowed: `email_not_verified`, `account_suspended` or `admin_only` | `{"error": "account_suspended", "message": "..."}` |
+| 503 | The login could not be checked (Supabase unreachable). **Fails closed:** the request is refused, never let through | `{"error": "auth_unavailable", ...}` |
+| 413 | Request body over `MAX_REQUEST_BYTES` (64 KB) | `{"error": "payload_too_large", ...}` |
+| 422 | Missing/invalid fields, unknown fields, text over 4,000 characters, malformed JSON. **The submitted values are never echoed back** | `{"error": "invalid_request", "message": "The request is not valid.", "details": [{"field": "text", "problem": "..."}]}` |
+| 429 | Rate limit reached: 10 requests per minute per client, 25 per minute in total (protects the LLM quota). Includes a `Retry-After` header | `{"error": "rate_limited", "message": "Too many requests. Please wait a moment and try again."}` |
+| 500 / 502 | Server or configuration error (e.g. missing LLM key) | Generic message only; details in the server log |
+
+**Rate limiting** is in memory (`backend/app/config/rate_limiter.py`), so limits apply per server process; running several processes would need a shared store behind the same `RateLimiter` interface. Until login exists, clients are identified by their network address (never by a client-supplied forwarded-for header, which is trivially spoofed); step 6 limits per user.
 
 ---
 

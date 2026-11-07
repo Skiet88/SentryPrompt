@@ -1,6 +1,6 @@
 # REPOSITORY_DESIGN.md — SentryPrompt4
 
-**Traces to:** DOMAIN_MODEL.md (14 entities), ARCHITECTURE.md (locked stack: Python/FastAPI, SQLite)
+**Traces to:** DOMAIN_MODEL.md (14 entities), ARCHITECTURE.md (stack: Python/FastAPI, PostgreSQL on Supabase via SQLAlchemy)
 **Feeds:** Design Phase Template §3.2.1 (Module Specifications), §3.1.3 (Tech Stack justification)
 **Scope note:** per the supervisor's own prior brief (PrevProjectAssignment.pdf, Assignment 12), a minimum of 3 entities is sufficient to demonstrate the pattern for a solo project. Below, the **generic interface applies to all 14 entities** (table in §2), but only **3 representative repositories are fully specified** (§3) — one from each meaningful category (auth/platform, product, research) — since the remaining 11 are structurally identical, and writing all 14 out in full would be repetition, not additional design work.
 
@@ -39,9 +39,9 @@ Entity-specific repositories extend this with only the queries that entity actua
 | EvaluationLogEntry | `EvaluationLogEntryRepository` | **No `delete()` method exposed** — append-only, enforces NFR-009 at the interface level |
 | TestSetEntry | `TestSetEntryRepository` | Used only by the evaluation harness (Increment 8), never by live-path services |
 | User | `UserRepository` | Adds `find_by_email()` — needed for login (FR-015) |
-| Session | `SessionRepository` | Adds `find_by_token()`, `delete_all_for_user()` (FR-016 logout, FR-020 account deletion) |
-| EmailVerificationToken | `EmailVerificationTokenRepository` | Adds `find_by_token()` |
-| PasswordResetToken | `PasswordResetTokenRepository` | Adds `find_by_token()` |
+| Session | *None (Supabase Auth)* | Stored and invalidated by Supabase Auth; no repository needed (DOMAIN_MODEL.md §6) |
+| EmailVerificationToken | *None (Supabase Auth)* | As above |
+| PasswordResetToken | *None (Supabase Auth)* | As above |
 | Conversation | `ConversationRepository` | Adds `find_by_user_id()` |
 | Message | `MessageRepository` | Adds `find_by_conversation_id()`; `save()` always writes encrypted content (NFR-011) |
 | AdminAuditLog | `AdminAuditLogRepository` | **No `delete()` or `update()` — immutable by design** (FR-022) |
@@ -127,9 +127,29 @@ class InMemoryScreeningResultRepository(ScreeningResultRepository):
 
 ---
 
+## 3A. Implementation Note (backend plan, step 4)
+
+The generic interface is implemented as three small capability interfaces in `backend/app/repository/base.py`: `ReadRepository` (`find_by_id`, `find_all`), `WriteRepository` (`save`) and `DeleteRepository` (`delete`). Each repository inherits only what its entity allows, so "append-only" and "immutable" are enforced by the type system: `EvaluationLogEntryRepository` inherits read and write but not delete. Methods are `async` so database-backed implementations never block the server.
+
+`EvaluationLogEntryRepository` is the first one implemented, with an in-memory implementation (bounded to 10,000 entries) used until the database layer (step 5) adds the PostgreSQL implementation behind the same interface.
+
+## 3B. Implementation Note (backend plan, step 5: PostgreSQL)
+
+PostgreSQL repositories (`backend/app/repository/postgres/`) use SQLAlchemy Core with bound parameters only (SECURITY_RULES.md §1). Rows are turned back into entities through the entity factories, so stored data is validated when read. Implemented so far: `ScreeningResultRepository`, `FlaggedSpanRepository` and `EvaluationLogEntryRepository`, each with an in-memory and a PostgreSQL implementation. Profiles, conversations, messages and the audit log follow with the steps that use them.
+
+**Unit of Work for the screening write path:** `ScreeningRecordWriter` saves a screening's `ScreeningResult`, its `FlaggedSpan`s and its `EvaluationLogEntry` in **one database transaction**, so research data is never half-written (an integration test forces a failure mid-way and checks nothing was saved). Reads still go through the per-entity repositories.
+
+**Choice of implementation:** the app uses PostgreSQL when `DATABASE_URL` is set (required in production) and the in-memory implementations otherwise, so development works without a database.
+
+## 3C. Implementation Note (chat step: conversations and messages)
+
+`ConversationRepository` and `MessageRepository` (`backend/app/repository/conversation_repository.py`) deviate from the generic interface on purpose: **every method takes the owner's user ID** (`find_for_user`, `list_for_user`, `delete_for_user`), and there is no way to load a conversation by ID alone. An IDOR bug in the service layer therefore cannot reach another student's conversation. The message query also joins on the owner, so even a forged `Conversation` object with another user's ID reads nothing (tested).
+
+`PostgresMessageRepository` encrypts every message with `AesGcmMessageCipher` before writing and decrypts on reading (NFR-011): AES-256-GCM, a fresh random nonce per message, and the message and conversation IDs bound in as authenticated data, so a ciphertext moved to another row cannot be decrypted. The key (`MESSAGE_ENCRYPTION_KEY`) exists only in the backend's environment; the database and its dashboard see only ciphertext (tested against PostgreSQL). Appending messages and updating the conversation's `updated_at` happen in one transaction.
+
 ## 4. Storage Abstraction: Factory Pattern
 
-**Choice: Factory, not raw Dependency Injection framework.** For a solo project with two backends (in-memory for tests, SQLite for real use), a full DI container (e.g. `dependency-injector`) is more machinery than the problem needs — a small factory function achieves the same swappability with a fraction of the setup.
+**Choice: Factory, not raw Dependency Injection framework.** For a solo project with two backends (in-memory for tests, PostgreSQL via SQLAlchemy for real use), a full DI container (e.g. `dependency-injector`) is more machinery than the problem needs — a small factory function achieves the same swappability with a fraction of the setup.
 
 ```python
 class RepositoryFactory:
@@ -138,8 +158,8 @@ class RepositoryFactory:
         match storage_type:
             case "MEMORY":
                 return InMemoryUserRepository()
-            case "SQLITE":
-                return SQLiteUserRepository(db_path="sentryprompt.db")  # future-proofing stub, see §5
+            case "POSTGRES":
+                return PostgresUserRepository(database_url=settings.DATABASE_URL)  # see §5
             case _:
                 raise ValueError(f"Unknown storage type: {storage_type}")
     # One factory method per repository, same pattern — omitted here for brevity,
@@ -150,16 +170,18 @@ class RepositoryFactory:
 
 ## 5. Future-Proofing Stub
 
+**Note (stack revision):** in the implemented system, account identity lives in Supabase Auth (`auth.users`), so `UserRepository` reads and writes the `profiles` table (display name, role, status) and calls Supabase's admin API only where an auth record must change (email update, account deletion). The interface above is unchanged; only the storage behind it moved from SQLite to PostgreSQL.
+
 ```python
-class SQLiteUserRepository(UserRepository):
+class PostgresUserRepository(UserRepository):
     """
     Stub only — no full implementation required at design phase.
     Demonstrates the interface is storage-agnostic: swapping InMemoryUserRepository
     for this requires no change anywhere in the Service Layer (Increment 7).
     """
-    def __init__(self, db_path: str):
-        self._db_path = db_path
-        # real implementation would open a connection pool here
+    def __init__(self, database_url: str):
+        self._database_url = database_url
+        # real implementation creates a SQLAlchemy engine/session here
 
     def save(self, user: User) -> User:
         raise NotImplementedError("Implemented during build phase, not design phase")
