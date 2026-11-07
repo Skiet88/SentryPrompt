@@ -59,7 +59,7 @@ redacted text is what actually gets sent to ChatGPT, not the original.
    (the same login the web app uses).
 5. Open chatgpt.com and start typing.
 
-## Known limitations (stated honestly, not discovered later)
+## Known limitations
 
 - **One target site.** Only `chatgpt.com` / `chat.openai.com` are declared
   in `manifest.json`. Adding another platform means adding its origin to
@@ -142,7 +142,6 @@ enforce CORS against an extension's background-script fetches to a host
 the extension has declared in `host_permissions` — the backend's CORS
 allow-list, which still only lists the web app's own origins, was
 correctly scoped from the start and needed no change. (PROJECT_BACKLOG.md's
-original Increment 18 entry assumed a CORS change would be needed; building
-this showed that assumption was wrong, and the backlog has been corrected
-to say so rather than left to quietly describe a change that was never
-made.)
+original Increment 18 entry assumed a CORS change would be needed; that
+assumption did not hold once this was built, and the backlog entry has
+been updated to match.)
