@@ -1,0 +1,53 @@
+<!doctype html>
+<!--
+  A local stand-in for chatgpt.com's prompt box, used only to test the
+  extension's content script without depending on the real site's live
+  markup (which this sandboxed environment cannot browse to, and which
+  changes over time anyway). It is NOT a copy of ChatGPT's code — it is a
+  minimal page using the same element shape (a contenteditable prompt box
+  plus a send button with a matching selector) that content.js's
+  INPUT_SELECTORS / SEND_BUTTON_SELECTORS already try to find.
+
+  Whoever installs the real extension against the live site should open
+  devtools there once and confirm these selectors still match (see
+  extension/README.md, "Before relying on this for real").
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture: prompt box</title>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 40px; }
+      #prompt-textarea { border: 1px solid #ccc; border-radius: 8px; padding: 10px; min-height: 60px; width: 480px; }
+      #log { margin-top: 20px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Fixture prompt box (not the real ChatGPT)</h1>
+    <form id="composer">
+      <div id="prompt-textarea" contenteditable="true" role="textbox" aria-multiline="true"></div>
+      <button type="submit" data-testid="send-button">Send</button>
+    </form>
+    <div id="log"></div>
+    <script>
+      const log = document.getElementById("log");
+      const box = document.getElementById("prompt-textarea");
+      document.getElementById("composer").addEventListener("submit", (e) => {
+        e.preventDefault();
+        log.textContent += "SUBMITTED: " + (box.innerText || "") + "\n";
+      });
+      // Real sites' own JS submits a contenteditable prompt box on Enter
+      // (the browser has no native "submit a form from a div" behaviour).
+      // This listener plays that role here. It is deliberately a BUBBLE
+      // listener: content.js's capture-phase listener runs first and, when
+      // it blocks the Enter, calls stopPropagation() so this one never
+      // fires — the same order a real site's own handler would see.
+      box.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          document.getElementById("composer").requestSubmit();
+        }
+      });
+    </script>
+  </body>
+</html>

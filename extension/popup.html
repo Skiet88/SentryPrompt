@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>SentryPrompt</title>
+    <style>
+      body {
+        width: 260px;
+        font-family: system-ui, sans-serif;
+        padding: 14px;
+        color: #0b0b0b;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 10px;
+      }
+      label {
+        display: block;
+        font-size: 12px;
+        margin: 8px 0 3px;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 8px;
+        font-size: 13px;
+        border: 1px solid #bbb;
+        border-radius: 6px;
+      }
+      button {
+        margin-top: 12px;
+        width: 100%;
+        padding: 7px;
+        border: none;
+        border-radius: 6px;
+        background: #0f766e;
+        color: #fff;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #e5e5e5;
+        color: #0b0b0b;
+      }
+      #status {
+        font-size: 12px;
+        margin-top: 10px;
+      }
+      #error {
+        font-size: 12px;
+        color: #b91c1c;
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SentryPrompt</h1>
+    <div id="loggedOut">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username" />
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" />
+      <button id="loginBtn">Log in</button>
+      <div id="error"></div>
+    </div>
+    <div id="loggedIn" style="display: none">
+      <div id="status"></div>
+      <button id="logoutBtn" class="secondary">Log out</button>
+    </div>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
