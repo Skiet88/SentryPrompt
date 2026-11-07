@@ -57,9 +57,14 @@ async function main() {
   manifest.host_permissions.push(`${fixtureOrigin}/*`);
   writeFileSync(path.join(extDir, "manifest.json"), JSON.stringify(manifest, null, 2));
 
+  const SHOTS = path.join(EXT_SRC, "screenshots");
+  mkdirSync(SHOTS, { recursive: true });
+
   const profileDir = mkdtempSync(path.join(tmpdir(), "sentryprompt-profile-"));
   const context = await chromium.launchPersistentContext(profileDir, {
     headless: false,
+    viewport: { width: 760, height: 620 },
+    deviceScaleFactor: 2,
     args: [`--disable-extensions-except=${extDir}`, `--load-extension=${extDir}`, "--no-sandbox"],
   });
 
@@ -70,15 +75,19 @@ async function main() {
   console.log("extension id:", extensionId);
 
   const page = await context.newPage();
+  await page.setViewportSize({ width: 300, height: 260 });
 
   // ---- log in via the real popup UI, against the real Supabase stand-in --
   await page.goto(`chrome-extension://${extensionId}/popup.html`);
+  await page.waitForSelector("#loginBtn");
+  await page.screenshot({ path: path.join(SHOTS, "ext01_popup_login.png") });
   await page.fill("#email", "student.demo@example.com");
   await page.fill("#password", "Demo-Passw0rd!");
   await page.click("#loginBtn");
   await page.waitForSelector("#status");
   const status = await page.textContent("#status");
   assert(status.includes("student.demo@example.com"), `popup shows logged-in status (got: "${status}")`);
+  await page.screenshot({ path: path.join(SHOTS, "ext02_popup_logged_in.png") });
 
   // ---- clean prompt: no banner, Enter submits immediately ---------------
   const fx1 = await context.newPage();
@@ -109,7 +118,7 @@ async function main() {
   );
   assert(bannerText.includes("Id number") || bannerText.toLowerCase().includes("id number"), "banner names the ID number category");
   assert(bannerText.toLowerCase().includes("identity fraud"), `banner shows the real backend explanation (got: "${bannerText}")`);
-  await fx2.screenshot({ path: __dirname + "/../screenshot-banner.png" });
+  await fx2.screenshot({ path: path.join(SHOTS, "ext03_flagged_banner.png"), clip: { x: 0, y: 0, width: 650, height: 280 } });
 
   await fx2.keyboard.press("Enter");
   await fx2.waitForTimeout(300);
@@ -123,6 +132,7 @@ async function main() {
   const redactedText = await fx2.textContent("#prompt-textarea");
   assert(redactedText.includes("[REDACTED_SA_ID]"), `"Hide details and send" redacts the ID number (got: "${redactedText}")`);
   assert(!redactedText.includes("8001015009087"), "the real ID number no longer appears in the input");
+  await fx2.screenshot({ path: path.join(SHOTS, "ext04_redacted_before_send.png"), clip: { x: 0, y: 0, width: 650, height: 200 } });
 
   await fx2.keyboard.press("Enter");
   await fx2.waitForTimeout(300);
