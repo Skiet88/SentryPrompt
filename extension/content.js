@@ -15,7 +15,7 @@
   // doesn't show this exact tag after a reload, Chrome is still running an
   // older cached copy — that fact is now checkable by looking at the page,
   // not by guessing from symptoms.
-  const BUILD = "2026-11-11-preview-v5";
+  const BUILD = "2026-11-11-preview-v6";
   const tag = document.createElement("div");
   tag.textContent = `SentryPrompt build ${BUILD}`;
   tag.style.cssText =
@@ -359,26 +359,57 @@
     }
   }
 
+  function dispatchEnter(el) {
+    el.focus();
+    el.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        keyCode: 13,
+        which: 13,
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      }),
+    );
+  }
+
+  // Per-site overrides for the one thing that genuinely does need to know
+  // the real site: how it actually wants to be resubmitted. Generic
+  // heuristics (nearInput, findSendButton) and a plain redispatched Enter
+  // cover most composers, same as the open-source "Ctrl+Enter Sender"
+  // extension's own coverage of ~19 sites found — but ChatGPT's own send
+  // button lives in a real <form>, which a dispatched Enter does not
+  // reliably trigger there (its keyboard shortcuts are user-configurable),
+  // while every other site in that extension's table resends by dispatching
+  // Enter directly, never clicking anything. Adapted from that project
+  // (masachika-kamada/ChatGPT-Ctrl-Enter-Sender, content/ctrl-enter-handler.js).
+  const RESUBMIT_OVERRIDES = {
+    "chatgpt.com": (el) => {
+      if (el.id !== "prompt-textarea" && !el.hasAttribute?.("data-composer-markdown")) return false;
+      const button = el.closest("form")?.querySelector('button[type="submit"]:not([disabled])');
+      if (!button) return false;
+      replay(() => button.click());
+      return true;
+    },
+    "chat.openai.com": (el) => RESUBMIT_OVERRIDES["chatgpt.com"](el),
+    "gemini.google.com": (el) => {
+      const isComposer =
+        el.tagName === "TEXTAREA" || (el.tagName === "DIV" && el.classList.contains("ql-editor"));
+      if (!isComposer) return false;
+      replay(() => dispatchEnter(el));
+      return true;
+    },
+  };
+
   function resubmit(el) {
+    if (RESUBMIT_OVERRIDES[location.hostname]?.(el)) return;
     const btn = findSendButton(el);
     if (btn) {
       replay(() => btn.click());
       return;
     }
-    el.focus();
-    replay(() =>
-      el.dispatchEvent(
-        new KeyboardEvent("keydown", {
-          key: "Enter",
-          code: "Enter",
-          keyCode: 13,
-          which: 13,
-          bubbles: true,
-          cancelable: true,
-          composed: true,
-        }),
-      ),
-    );
+    replay(() => dispatchEnter(el));
   }
 
   // Once a prompt has gone out, forget it, so typing the same flagged text
