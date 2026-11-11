@@ -1,0 +1,76 @@
+<!doctype html>
+<!--
+  Stand-ins for real AI chat composers, used to test content.js without
+  any site-specific selector. ?mode=rich mimics the current ChatGPT shape:
+  a contenteditable with NO id, and a send button that only exists while
+  there is text. ?mode=plain is a bare <textarea> in a <form> whose submit
+  button has no label at all. Neither is a copy of any site's code.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture: generic composer</title>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 40px; padding-top: 220px; }
+      .box { border: 1px solid #ccc; border-radius: 8px; padding: 10px; min-height: 40px; width: 480px; }
+      textarea { width: 480px; height: 60px; }
+      #log { margin-top: 20px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="log"></div>
+    <script>
+      const log = document.getElementById("log");
+      const root = document.getElementById("root");
+      const mode = new URLSearchParams(location.search).get("mode") || "rich";
+      const sent = (text) => (log.textContent += "SUBMITTED: " + text + "\n");
+
+      if (mode === "rich") {
+        root.innerHTML =
+          '<div class="composer"><div class="box ProseMirror" contenteditable="true" role="textbox" aria-label="Ask"></div><span id="slot"></span></div>';
+        const box = root.querySelector(".box");
+        const slot = root.querySelector("#slot");
+        const send = () => {
+          const text = box.innerText.trim();
+          if (!text) return;
+          sent(text);
+          box.textContent = "";
+          slot.innerHTML = "";
+        };
+        box.addEventListener("input", () => {
+          const has = box.innerText.trim().length > 0;
+          if (has && !slot.firstChild) {
+            const b = document.createElement("button");
+            b.setAttribute("aria-label", "Send prompt");
+            b.textContent = "↑";
+            b.addEventListener("click", send);
+            slot.appendChild(b);
+          } else if (!has) slot.innerHTML = "";
+        });
+        box.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            send();
+          }
+        });
+      } else {
+        root.innerHTML = '<form><textarea></textarea><button type="submit">↑</button></form>';
+        const form = root.querySelector("form");
+        const ta = root.querySelector("textarea");
+        form.addEventListener("submit", (e) => {
+          e.preventDefault();
+          if (!ta.value.trim()) return;
+          sent(ta.value.trim());
+          ta.value = "";
+        });
+        ta.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            form.requestSubmit();
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

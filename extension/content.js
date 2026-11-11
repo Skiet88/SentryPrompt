@@ -1,39 +1,39 @@
 // Content script (classic script, not a module — Manifest V3 does not allow
-// "type": "module" content scripts). Runs in the page's own context, so it
-// NEVER fetches anything itself and NEVER sees the session token: it only
-// sends the typed text to background.js over chrome.runtime.sendMessage and
-// gets back a verdict. This also sidesteps the host page's own
-// Content-Security-Policy, which may block a page-context fetch to a
-// different origin even when the extension itself is allowed to reach it.
+// "type": "module" content scripts). It NEVER fetches anything itself and
+// NEVER sees the session token: it only sends the typed text to
+// background.js over chrome.runtime.sendMessage and gets back a verdict.
 //
-// DOM selectors below are best-effort guesses at ChatGPT's current markup
-// (a contenteditable "ProseMirror" prompt box, submitted by Enter or a send
-// button). Sites like this change their markup without notice, so every
-// lookup tries several candidates in order and gives up quietly — logging
-// one line to the console, never throwing — if none match (documented
-// fail-silent fallback, PROJECT_BACKLOG.md Increment 18).
+// Site-agnostic by design: nothing here knows any one site's markup. All
+// listeners sit on window in the capture phase, so they see Enter, clicks
+// and form submits before the page's own handlers, and the prompt box is
+// simply "whichever textarea or contenteditable the student is typing in".
+// Supporting another AI site is therefore only a manifest.json change
+// (its URL in content_scripts.matches and host_permissions).
 (() => {
-  const INPUT_SELECTORS = [
-    "#prompt-textarea",
-    "div[contenteditable='true'][aria-label='Ask ChatGPT']",
-    "div.ProseMirror[contenteditable='true']",
-    "div[contenteditable='true'][id*='prompt']",
-    "div[contenteditable='true'][role='textbox']",
-    "form textarea",
-    "textarea",
-  ];
-  const SEND_BUTTON_SELECTORS = [
-    "button[data-testid='send-button']",
-    "button[aria-label='Send prompt']",
-    "button[aria-label*='Send' i]",
-    "form button[type='submit']",
-  ];
   const DEBOUNCE_MS = 800;
+  const EDITABLE = "textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']";
+  const BUTTON = "button, [role='button'], input[type='submit']";
+  const SEND_HINT = /send|submit/i;
 
-  function query(selectors) {
-    for (const sel of selectors) {
-      const el = document.querySelector(sel);
-      if (el) return el;
+  function eventElement(event) {
+    const node = event.composedPath ? event.composedPath()[0] : event.target;
+    return node instanceof Element ? node : (node?.parentElement ?? null);
+  }
+
+  function editableFrom(event) {
+    return eventElement(event)?.closest?.(EDITABLE) ?? null;
+  }
+
+  function isSendButton(btn) {
+    if (btn.type === "submit" && btn.form) return true;
+    return ["aria-label", "data-testid", "title", "id"].some((a) => SEND_HINT.test(btn.getAttribute(a) ?? ""));
+  }
+
+  // The nearest send-like button around the prompt box, if the site has one.
+  function findSendButton(el) {
+    for (let node = el.parentElement, depth = 0; node && depth < 10; node = node.parentElement, depth++) {
+      const btn = [...node.querySelectorAll(BUTTON)].find((b) => isSendButton(b) && !b.disabled);
+      if (btn) return btn;
     }
     return null;
   }
@@ -43,10 +43,29 @@
     return el.innerText ?? el.textContent ?? "";
   }
 
+  // insertText goes through the browser's own editing pipeline, so rich
+  // editors (ProseMirror, Quill, Lexical) and React-controlled textareas
+  // all see it as real typing and keep their internal state in sync.
   function setText(el, text) {
+    el.focus();
     if (el.tagName === "TEXTAREA") {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-      setter.call(el, text);
+      el.select();
+    } else {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    let ok = false;
+    try {
+      ok = document.execCommand("insertText", false, text);
+    } catch {
+      ok = false;
+    }
+    if (ok && getText(el).trim() === text.trim()) return;
+    if (el.tagName === "TEXTAREA") {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set.call(el, text);
     } else {
       el.textContent = text;
     }
@@ -67,7 +86,6 @@
       .banner.show { display: block; }
       .title { font-weight: 600; font-size: 13px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
       .dot { width: 8px; height: 8px; border-radius: 50%; background: #eb6834; flex: none; }
-      .dot.warn { background: #fab219; }
       ul { margin: 6px 0 10px; padding-left: 16px; font-size: 12px; }
       li { margin-bottom: 4px; }
       .cat { font-weight: 600; }
@@ -82,9 +100,9 @@
       <ul class="flags"></ul>
       <div class="notice"></div>
       <div class="row">
+        <button class="hide primary" style="display:none">Hide details and send</button>
         <button class="edit">Edit my prompt</button>
         <button class="sendAnyway">Send anyway</button>
-        <button class="hide" style="display:none">Hide details and send</button>
       </div>
     </div>
   `;
@@ -98,31 +116,31 @@
   const editBtn = shadow.querySelector(".edit");
 
   function showBanner(target) {
+    banner.classList.add("show");
     const r = target.getBoundingClientRect();
     banner.style.left = `${Math.max(8, r.left)}px`;
     banner.style.top = `${Math.max(8, r.top - banner.offsetHeight - 10)}px`;
-    banner.classList.add("show");
   }
   function hideBanner() {
     banner.classList.remove("show");
   }
 
-  // ---- per-input state ----------------------------------------------
-  // "clear"    -> nothing to warn about, sending proceeds normally
-  // "pending"  -> flags exist (or the check failed / fails closed), and
-  //               nothing has been sent to the page yet: sending is blocked
-  // "resolved" -> the student chose an action for the current text; the
-  //               next edit to the text goes back to "clear"/debounce again
+  // ---- state -----------------------------------------------------------
+  // "clear"    -> the screened text had nothing to warn about
+  // "pending"  -> flags exist (or the check failed: fail closed, NFR-015);
+  //               sending is blocked until the student chooses
+  // "resolved" -> the student chose an action for the screened text
   let state = "clear";
   let lastScreenedText = "";
   let currentFlags = [];
   let debounceTimer = null;
   let activeInput = null;
+  let inflight = null; // { text, promise } of the check now running
+  let bypass = false; // true only while we replay a submit we held back
 
   // Same plain-language labels as frontend/src/chat/categories.ts, kept in
-  // sync manually since the extension has no build step to share code with
-  // the frontend; the server-sent explanation is what actually matters, and
-  // it is never hard-coded here.
+  // sync manually (the extension has no build step to share code with the
+  // frontend); the explanation itself always comes from the server.
   const CATEGORY_LABELS = {
     SA_ID: "ID number",
     BANK_CARD: "Card number",
@@ -141,37 +159,46 @@
     return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Sensitive information";
   }
 
-  async function screen(el) {
-    const text = getText(el).trim();
-    if (!text || text === lastScreenedText) return;
+  function showUnchecked(el, kind) {
+    state = "pending";
+    currentFlags = [];
+    headline.textContent = "We couldn't fully check this prompt";
+    noticeEl.textContent =
+      kind === "rate_limited"
+        ? "Too many checks in the last minute. Wait a moment, or send anyway."
+        : "The screening service did not answer in time.";
+    flagsEl.innerHTML = "";
+    hideBtn.style.display = "none";
+    showBanner(el);
+  }
+
+  // Resolves to "clear", "pending", or "stale" (the text changed while the
+  // check was running, so this answer says nothing about what is there now).
+  async function runScreen(el, text) {
+    let result;
+    try {
+      result = await chrome.runtime.sendMessage({ type: "SCREEN_PROMPT", text });
+    } catch {
+      result = { kind: "unavailable" };
+    }
+    if (getText(el).trim() !== text) return "stale";
     lastScreenedText = text;
-    const result = await chrome.runtime.sendMessage({ type: "SCREEN_PROMPT", text });
-    if (getText(el).trim() !== text) return; // the student kept typing; a newer screen is already queued
 
     if (result?.kind === "not_logged_in") {
-      // Logged-out visitors are reminded, not blocked (README: Known limitations).
+      // Logged-out visitors are not blocked (README: Known limitations).
       state = "clear";
       hideBanner();
-      return;
+      return "clear";
     }
-    if (result?.kind === "rate_limited" || result?.kind === "unavailable") {
-      state = "pending";
-      currentFlags = [];
-      headline.textContent = "We couldn't fully check this prompt";
-      noticeEl.textContent =
-        result.kind === "rate_limited"
-          ? "Too many checks in the last minute. Wait a moment, or send anyway."
-          : "The screening service did not answer in time.";
-      flagsEl.innerHTML = "";
-      hideBtn.style.display = "none";
-      showBanner(el);
-      return;
+    if (result?.kind !== "ok" || !result.data) {
+      showUnchecked(el, result?.kind);
+      return "pending";
     }
     const data = result.data;
     if (!data.requiresDecision) {
       state = "clear";
       hideBanner();
-      return;
+      return "clear";
     }
     state = "pending";
     currentFlags = data.flags;
@@ -190,108 +217,189 @@
     }
     hideBtn.style.display = data.flags.length > 0 ? "" : "none";
     showBanner(el);
+    return "pending";
+  }
+
+  function screen(el) {
+    const text = getText(el).trim();
+    if (!text) return Promise.resolve("clear");
+    if (inflight?.text === text) return inflight.promise;
+    if (text === lastScreenedText) return Promise.resolve(state === "pending" ? "pending" : "clear");
+    const promise = runScreen(el, text).finally(() => {
+      if (inflight?.promise === promise) inflight = null;
+    });
+    inflight = { text, promise };
+    return promise;
   }
 
   function scheduleScreen(el) {
-    activeInput = el;
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => screen(el), DEBOUNCE_MS);
   }
 
-  function applyHideAndContinue() {
+  // ---- replaying a submit we held back ---------------------------------
+  function replay(action) {
+    bypass = true;
+    try {
+      action();
+    } finally {
+      bypass = false;
+    }
+  }
+
+  function resubmit(el) {
+    const btn = findSendButton(el);
+    if (btn) {
+      replay(() => btn.click());
+      return;
+    }
+    el.focus();
+    replay(() =>
+      el.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          code: "Enter",
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+        }),
+      ),
+    );
+  }
+
+  // Once a prompt has gone out, forget it, so typing the same flagged text
+  // again is screened again rather than waved through.
+  function forgetAfterSend(el, text) {
+    setTimeout(() => {
+      if (getText(el).trim() !== text) {
+        lastScreenedText = "";
+        state = "clear";
+      }
+    }, 600);
+  }
+
+  // The gate every send attempt passes through. Returns true when the
+  // attempt must be held back. Screening is debounced and asynchronous,
+  // and a student who presses Enter right after the last letter always
+  // beats it, so "has a check already flagged this?" is not enough: text
+  // that has not been screened yet is held, checked now, and replayed
+  // only if it comes back clear.
+  function holdSubmit(el, replaySubmit) {
+    if (bypass) return false;
+    const text = getText(el).trim();
+    if (!text) return false;
+    if (text === lastScreenedText && !inflight) {
+      if (state === "pending") {
+        showBanner(el);
+        return true;
+      }
+      forgetAfterSend(el, text);
+      return false;
+    }
+    if (debounceTimer) clearTimeout(debounceTimer);
+    activeInput = el;
+    screen(el).then((verdict) => {
+      if (verdict === "clear") {
+        forgetAfterSend(el, text);
+        replaySubmit();
+      }
+    });
+    return true;
+  }
+
+  function block(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  // ---- banner actions --------------------------------------------------
+  function resolveAndSend() {
     if (!activeInput) return;
-    let text = getText(activeInput);
+    state = "resolved";
+    hideBanner();
+    const el = activeInput;
+    // Let the page's editor absorb any text change before the send.
+    setTimeout(() => {
+      resubmit(el);
+      // Sent: forget it, so the same text typed again is screened again.
+      lastScreenedText = "";
+      state = "clear";
+    }, 50);
+  }
+
+  hideBtn.addEventListener("click", () => {
+    if (!activeInput) return;
+    let text = getText(activeInput).trim();
     // Replace from the end so earlier offsets stay valid.
     const sorted = [...currentFlags].sort((a, b) => b.startIndex - a.startIndex);
     for (const f of sorted) {
       text = text.slice(0, f.startIndex) + `[REDACTED_${f.category.toUpperCase()}]` + text.slice(f.endIndex);
     }
-    setText(activeInput, text);
     lastScreenedText = text.trim();
-    resolveAndHide();
-  }
-
-  function resolveAndHide() {
     state = "resolved";
-    hideBanner();
-  }
-
-  hideBtn.addEventListener("click", applyHideAndContinue);
-  sendAnywayBtn.addEventListener("click", resolveAndHide);
+    setText(activeInput, text);
+    if (debounceTimer) clearTimeout(debounceTimer);
+    lastScreenedText = getText(activeInput).trim();
+    resolveAndSend();
+  });
+  sendAnywayBtn.addEventListener("click", resolveAndSend);
   editBtn.addEventListener("click", () => {
     hideBanner();
     activeInput?.focus();
-    state = "clear"; // the student is about to change the text; re-screen once they do
+    lastScreenedText = "";
+    state = "clear"; // the student is about to change the text; it is screened again
   });
 
-  // Screening is debounced and asynchronous (DEBOUNCE_MS, then a network
-  // round trip), but a student who finishes a short sentence and presses
-  // Enter right away will beat that every time — 800ms plus a network call
-  // is longer than most people pause between typing and submitting. So
-  // Enter/Send cannot simply check "is the result already in" (state ===
-  // "pending"); if the current text has never been screened, this forces
-  // an immediate check and holds the submit until it resolves, giving a
-  // fast typist the same fail-closed-until-cleared guarantee the debounced
-  // path already gives a slower one.
-  function interceptSubmit(el, resubmit) {
-    if (state === "pending") return true; // already known-flagged: block, banner is up
-    const currentText = getText(el).trim();
-    if (!currentText || currentText === lastScreenedText) return false; // already screened (or resolved) for this exact text
-    if (debounceTimer) clearTimeout(debounceTimer);
-    activeInput = el;
-    screen(el).then(() => {
-      if (state === "clear") resubmit();
-      // else "pending": screen() already showed the banner, nothing more to do.
-    });
-    return true; // block this attempt; the recheck above will resubmit if clear
-  }
+  // ---- page-level listeners (capture: before the site's own handlers) --
+  window.addEventListener(
+    "input",
+    (e) => {
+      const el = editableFrom(e);
+      if (!el) return;
+      activeInput = el;
+      if (getText(el).trim() !== lastScreenedText) {
+        if (state !== "clear") hideBanner();
+        state = "clear";
+        scheduleScreen(el);
+      }
+    },
+    true,
+  );
 
-  function attach(el) {
-    if (el.dataset.sentrypromptAttached) return;
-    el.dataset.sentrypromptAttached = "true";
-    el.addEventListener("input", () => {
-      if (getText(el).trim() !== lastScreenedText) state = "clear";
-      scheduleScreen(el);
-    });
-    // Capture phase: see Enter before the page's own React handler does.
-    el.addEventListener(
-      "keydown",
-      (e) => {
-        if (e.key !== "Enter" || e.shiftKey) return;
-        if (interceptSubmit(el, () => query(SEND_BUTTON_SELECTORS)?.click())) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (state === "pending") showBanner(el);
-        }
-      },
-      true,
-    );
-  }
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+      const el = editableFrom(e);
+      if (!el) return;
+      if (holdSubmit(el, () => resubmit(el))) block(e);
+    },
+    true,
+  );
 
-  function attachSendButton(btn) {
-    if (!btn || btn.dataset.sentrypromptAttached) return;
-    btn.dataset.sentrypromptAttached = "true";
-    btn.addEventListener(
-      "click",
-      (e) => {
-        const el = activeInput || query(INPUT_SELECTORS);
-        if (!el) return;
-        if (interceptSubmit(el, () => btn.click())) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (state === "pending") showBanner(el);
-        }
-      },
-      true,
-    );
-  }
+  window.addEventListener(
+    "click",
+    (e) => {
+      if (e.composedPath().includes(host)) return; // our own banner buttons
+      const btn = eventElement(e)?.closest?.(BUTTON);
+      if (!btn || !isSendButton(btn)) return;
+      const el = activeInput?.isConnected ? activeInput : null;
+      if (!el) return;
+      if (holdSubmit(el, () => replay(() => btn.click()))) block(e);
+    },
+    true,
+  );
 
-  function scan() {
-    const input = query(INPUT_SELECTORS);
-    if (input) attach(input);
-    attachSendButton(query(SEND_BUTTON_SELECTORS));
-  }
-
-  scan();
-  new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
+  window.addEventListener(
+    "submit",
+    (e) => {
+      const form = e.target;
+      const el = activeInput?.isConnected && form.contains?.(activeInput) ? activeInput : null;
+      if (!el) return;
+      if (holdSubmit(el, () => replay(() => form.requestSubmit()))) block(e);
+    },
+    true,
+  );
 })();

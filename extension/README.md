@@ -5,8 +5,8 @@ it — without making you leave ChatGPT or use SentryPrompt's own chat. This
 exists because not every student who wants their prompts screened wants to
 switch AI tools: the extension meets you where you already are.
 
-It is a minimal version of FR-010, built as PROJECT_BACKLOG.md's Increment
-18 scoped it: one target site (ChatGPT), reusing the existing backend
+It is a minimal version of FR-010 (PROJECT_BACKLOG.md, Increment 18),
+reusing the existing backend
 exactly as it already is — `SourceChannel.EXTENSION` and
 `POST /api/prompts/screen` needed no changes at all.
 
@@ -61,18 +61,13 @@ redacted text is what actually gets sent to ChatGPT, not the original.
 
 ## Known limitations
 
-- **One target site.** Only `chatgpt.com` / `chat.openai.com` are declared
-  in `manifest.json`. Adding another platform means adding its origin to
-  `content_scripts.matches` and `host_permissions`, and very likely adding
-  new candidate selectors to `content.js` for that site's own markup.
-- **Selectors are a best guess, not a live-verified match.** This
-  environment cannot browse to the real chatgpt.com to confirm its current
-  DOM, so `INPUT_SELECTORS` / `SEND_BUTTON_SELECTORS` at the top of
-  `content.js` are reasoned guesses at its current prompt-box and
-  send-button markup. **Before relying on this for real:** open
-  chatgpt.com's devtools once, confirm (or correct) those selectors. If
-  none match, the content script logs one line and does nothing — it
-  never breaks the host page.
+- **Verified live on ChatGPT only.** `content.js` knows no site's markup:
+  it listens on the page itself for Enter, send-button clicks and form
+  submits, and treats whichever text box the student is typing in as the
+  prompt. `manifest.json` therefore also lists Claude, Gemini and Copilot,
+  and adding another site is only its URL in `content_scripts.matches` and
+  `host_permissions`. Those three have not been tried in a real browser
+  yet, so check each once before relying on it.
 - **Logged-out students are not blocked.** If nobody is logged in, the
   extension does not screen and does not block sending — it simply does
   nothing, rather than stopping every message a brand-new visitor types
@@ -132,6 +127,22 @@ It checks, end to end, against the real system:
 
 All 11 checks pass as of this writing; `extension/screenshot-banner.png` is
 a real screenshot taken during that run.
+
+### Send-gate test (mock backend)
+
+`tests/run_generic_e2e.cjs` loads the same unpacked extension against
+`tests/fixture_generic.html`, which has two composers built like real
+ones: a contenteditable with no id whose send button only exists while
+there is text, and a plain `<textarea>` form with an unlabeled submit
+button. The backend here is a small in-process mock (it flags any
+13-digit number), because this test is about the browser side: a prompt
+sent the instant typing stops (Enter or click) must still be held and
+screened, the three banner actions must each send exactly once, a failed
+check must fail closed, and a logged-out student must not be blocked.
+
+```bash
+xvfb-run -a node extension/tests/run_generic_e2e.cjs
+```
 
 ## What deliberately did not change
 

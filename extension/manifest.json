@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SentryPrompt — Screen my prompts",
   "version": "0.1.0",
-  "description": "Checks what you type into ChatGPT for personal information before you send it, using your SentryPrompt account.",
+  "description": "Checks what you type into AI chat tools for personal information before you send it, using your SentryPrompt account.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -22,15 +22,28 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://copilot.microsoft.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://copilot.microsoft.com/*",
     "https://sentryprompt-backend-woyd.onrender.com/*",
     "https://dduqmzlxpglfblusgdsa.supabase.co/*"
   ]
