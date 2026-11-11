@@ -10,6 +10,7 @@
 // Supporting another AI site is therefore only a manifest.json change
 // (its URL in content_scripts.matches and host_permissions).
 (() => {
+  console.log("[SentryPrompt] content.js starting");
   const DEBOUNCE_MS = 800;
   const EDITABLE = "textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']";
   const BUTTON = "button, [role='button'], input[type='submit']";
@@ -371,10 +372,14 @@
   window.addEventListener(
     "keydown",
     (e) => {
+      if (e.key === "Enter") console.log("[SentryPrompt] keydown Enter seen, shiftKey:", e.shiftKey, "isComposing:", e.isComposing);
       if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
       const el = editableFrom(e);
+      console.log("[SentryPrompt] editableFrom ->", el);
       if (!el) return;
-      if (holdSubmit(el, () => resubmit(el))) block(e);
+      const held = holdSubmit(el, () => resubmit(el));
+      console.log("[SentryPrompt] holdSubmit ->", held, "state:", state);
+      if (held) block(e);
     },
     true,
   );
@@ -402,4 +407,5 @@
     },
     true,
   );
+  console.log("[SentryPrompt] content.js fully loaded, listeners attached");
 })();
