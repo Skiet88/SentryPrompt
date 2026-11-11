@@ -15,7 +15,10 @@
 (() => {
   const INPUT_SELECTORS = [
     "#prompt-textarea",
+    "div[contenteditable='true'][aria-label='Ask ChatGPT']",
+    "div.ProseMirror[contenteditable='true']",
     "div[contenteditable='true'][id*='prompt']",
+    "div[contenteditable='true'][role='textbox']",
     "form textarea",
     "textarea",
   ];
