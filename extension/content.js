@@ -81,34 +81,48 @@
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      .banner { position: fixed; z-index: 2147483647; max-width: 420px; font-family: system-ui, sans-serif;
-        background: #fff; border: 1px solid #d8d4cc; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18);
-        padding: 12px 14px; color: #0b0b0b; display: none; }
+      .banner { position: fixed; z-index: 2147483647; width: 400px; max-width: calc(100vw - 32px);
+        font-family: system-ui, sans-serif; background: #fff; border: 1px solid #d8d4cc; border-radius: 12px;
+        box-shadow: 0 10px 32px rgba(0,0,0,.22); padding: 18px 20px; color: #0b0b0b; display: none; }
       .banner.show { display: block; }
-      .title { font-weight: 600; font-size: 13px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-      .dot { width: 8px; height: 8px; border-radius: 50%; background: #eb6834; flex: none; }
-      ul { margin: 6px 0 10px; padding-left: 16px; font-size: 12px; }
-      li { margin-bottom: 4px; }
-      .cat { font-weight: 600; }
-      .row { display: flex; gap: 6px; flex-wrap: wrap; }
-      button { font-size: 12px; padding: 5px 10px; border-radius: 6px; border: 1px solid #ccc; background: #f3f1ec;
+      .title { font-weight: 700; font-size: 17px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+      .dot { width: 11px; height: 11px; border-radius: 50%; background: #eb6834; flex: none; }
+      ul { margin: 8px 0 10px; padding-left: 20px; font-size: 14px; line-height: 1.4; }
+      li { margin-bottom: 6px; }
+      .cat { font-weight: 700; }
+      .context { font-size: 13px; color: #45433f; margin-top: 10px; line-height: 1.5; }
+      .preview-label { font-size: 12px; font-weight: 600; color: #52514e; margin-top: 12px; margin-bottom: 4px; }
+      .preview { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; background: #f5f3ee;
+        border: 1px solid #e3e0d8; border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; word-break: break-word;
+        max-height: 140px; overflow-y: auto; color: #1a1a1a; }
+      .preview mark { background: #ffe6a3; color: inherit; border-radius: 3px; padding: 0 2px; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; justify-content: flex-end; }
+      button { font-size: 13px; padding: 7px 14px; border-radius: 7px; border: 1px solid #ccc; background: #f3f1ec;
         cursor: pointer; }
-      button.primary { background: #1baf7a; color: #fff; border-color: #1baf7a; }
-      .notice { font-size: 11px; color: #52514e; margin-top: 8px; }
+      button.primary { background: #1baf7a; color: #fff; border-color: #1baf7a; font-weight: 600; }
+      .notice { font-size: 13px; color: #52514e; margin-top: 10px; line-height: 1.4; }
     </style>
     <div class="banner" part="banner">
       <div class="title"><span class="dot"></span><span class="headline"></span></div>
       <ul class="flags"></ul>
+      <div class="context">
+        AI providers can store or use what you send them, including to train future
+        models — once sent, you can't take it back.
+      </div>
+      <div class="preview-label" style="display:none">If you hide the details, this is what will be sent instead:</div>
+      <div class="preview" style="display:none"></div>
       <div class="notice"></div>
       <div class="row">
-        <button class="hide primary" style="display:none">Hide details and send</button>
-        <button class="edit">Edit my prompt</button>
         <button class="sendAnyway">Send anyway</button>
+        <button class="edit">Edit my prompt</button>
+        <button class="hide primary" style="display:none">Hide details and send</button>
       </div>
     </div>
   `;
   document.documentElement.appendChild(host);
   const banner = shadow.querySelector(".banner");
+  const previewLabel = shadow.querySelector(".preview-label");
+  const previewEl = shadow.querySelector(".preview");
   const headline = shadow.querySelector(".headline");
   const flagsEl = shadow.querySelector(".flags");
   const noticeEl = shadow.querySelector(".notice");
@@ -170,6 +184,7 @@
         : `The screening service did not answer in time.${detail ? ` (${detail})` : ""}`;
     flagsEl.innerHTML = "";
     hideBtn.style.display = "none";
+    showPreview(null);
     showBanner(el);
   }
 
@@ -219,9 +234,48 @@
       li.append(cat, expl);
       flagsEl.appendChild(li);
     }
-    hideBtn.style.display = data.flags.length > 0 ? "" : "none";
+    const hasFlags = data.flags.length > 0;
+    hideBtn.style.display = hasFlags ? "" : "none";
+    showPreview(hasFlags ? redact(text, data.flags) : null);
     showBanner(el);
     return "pending";
+  }
+
+  // Replaces each flagged span with [REDACTED_<CATEGORY>], returning both
+  // the plain replacement text (what actually gets sent) and a version with
+  // each placeholder wrapped for highlighting (what the preview shows) —
+  // built from the same positions, so the two can never drift apart.
+  function redact(text, flags) {
+    const sorted = [...flags].sort((a, b) => b.startIndex - a.startIndex);
+    let plain = text;
+    let marked = text;
+    for (const f of sorted) {
+      const placeholder = `[REDACTED_${f.category.toUpperCase()}]`;
+      plain = plain.slice(0, f.startIndex) + placeholder + plain.slice(f.endIndex);
+      marked = marked.slice(0, f.startIndex) + "\u0000" + placeholder + "\u0001" + marked.slice(f.endIndex);
+    }
+    return { plain, marked };
+  }
+
+  function showPreview(redacted) {
+    if (!redacted) {
+      previewLabel.style.display = "none";
+      previewEl.style.display = "none";
+      return;
+    }
+    previewLabel.style.display = "";
+    previewEl.style.display = "";
+    previewEl.innerHTML = "";
+    const parts = redacted.marked.split(/\u0000|\u0001/);
+    parts.forEach((part, i) => {
+      if (i % 2 === 1) {
+        const mark = document.createElement("mark");
+        mark.textContent = part;
+        previewEl.appendChild(mark);
+      } else if (part) {
+        previewEl.appendChild(document.createTextNode(part));
+      }
+    });
   }
 
   function screen(el) {
@@ -335,13 +389,7 @@
 
   hideBtn.addEventListener("click", () => {
     if (!activeInput) return;
-    let text = getText(activeInput).trim();
-    // Replace from the end so earlier offsets stay valid.
-    const sorted = [...currentFlags].sort((a, b) => b.startIndex - a.startIndex);
-    for (const f of sorted) {
-      text = text.slice(0, f.startIndex) + `[REDACTED_${f.category.toUpperCase()}]` + text.slice(f.endIndex);
-    }
-    lastScreenedText = text.trim();
+    const text = redact(getText(activeInput).trim(), currentFlags).plain;
     state = "resolved";
     setText(activeInput, text);
     if (debounceTimer) clearTimeout(debounceTimer);
