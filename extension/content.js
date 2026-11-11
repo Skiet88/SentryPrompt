@@ -10,7 +10,19 @@
 // Supporting another AI site is therefore only a manifest.json change
 // (its URL in content_scripts.matches and host_permissions).
 (() => {
-  console.log("[SentryPrompt] content.js starting");
+  // Build tag, visible on every page this runs on (bottom-right corner, tiny,
+  // out of the way). Bump the date whenever this file changes. If the page
+  // doesn't show this exact tag after a reload, Chrome is still running an
+  // older cached copy — that fact is now checkable by looking at the page,
+  // not by guessing from symptoms.
+  const BUILD = "2026-11-11-preview-v1";
+  const tag = document.createElement("div");
+  tag.textContent = `SentryPrompt build ${BUILD}`;
+  tag.style.cssText =
+    "position:fixed;bottom:4px;right:4px;z-index:2147483647;font:10px/1.4 monospace;" +
+    "background:#1a1a1a;color:#9fe3b0;padding:2px 6px;border-radius:4px;opacity:.85;pointer-events:none;";
+  document.documentElement.appendChild(tag);
+
   const DEBOUNCE_MS = 800;
   const EDITABLE = "textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']";
   const BUTTON = "button, [role='button'], input[type='submit']";
