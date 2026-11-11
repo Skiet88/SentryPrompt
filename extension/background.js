@@ -7,6 +7,8 @@
 
 import { CONFIG } from "./config.js";
 
+console.log("[SentryPrompt] background.js loaded, CONFIG =", CONFIG);
+
 const STORAGE_KEY = "sentryprompt_session";
 
 function looksLikeServiceRoleKey(key) {
@@ -77,13 +79,17 @@ async function screenPrompt(text) {
     return { kind: "not_logged_in" };
   }
   let res;
+  const url = `${CONFIG.BACKEND_URL}/api/prompts/screen`;
+  console.log("[SentryPrompt] screenPrompt: BACKEND_URL =", CONFIG.BACKEND_URL, "fetching", url);
   try {
-    res = await fetch(`${CONFIG.BACKEND_URL}/api/prompts/screen`, {
+    res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.accessToken}` },
       body: JSON.stringify({ text, channel: "extension" }),
     });
-  } catch {
+    console.log("[SentryPrompt] screenPrompt: response status", res.status);
+  } catch (err) {
+    console.error("[SentryPrompt] screenPrompt: fetch threw ->", err);
     return { kind: "unavailable" };
   }
   if (res.status === 401) {
@@ -101,6 +107,7 @@ async function screenPrompt(text) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  console.log("[SentryPrompt] background received message:", message?.type);
   (async () => {
     switch (message?.type) {
       case "LOGIN":
@@ -119,6 +126,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       default:
         sendResponse({ error: "unknown_message" });
     }
-  })();
+  })().catch((err) => {
+    // Without this, a thrown error here leaves sendResponse uncalled: the
+    // message port times out, and the caller sees a generic closed-port
+    // error with no way to tell what actually went wrong.
+    console.error("[SentryPrompt] background: message handler threw ->", err);
+    sendResponse({ kind: "unavailable" });
+  });
   return true; // keep the message channel open for the async response
 });
