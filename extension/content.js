@@ -15,7 +15,7 @@
   // doesn't show this exact tag after a reload, Chrome is still running an
   // older cached copy — that fact is now checkable by looking at the page,
   // not by guessing from symptoms.
-  const BUILD = "2026-11-11-preview-v2";
+  const BUILD = "2026-11-11-preview-v3";
   const tag = document.createElement("div");
   tag.textContent = `SentryPrompt build ${BUILD}`;
   tag.style.cssText =
@@ -52,15 +52,22 @@
   }
 
   function isSendButton(btn) {
-    if (btn.type === "submit" && btn.form) return true;
+    if (btn.type === "submit") return true;
     return ["aria-label", "data-testid", "title", "id"].some((a) => SEND_HINT.test(btn.getAttribute(a) ?? ""));
   }
 
-  // The nearest send-like button around the prompt box, if the site has one.
+  // The send button near the prompt box, if the site has one. Many real
+  // composers (ChatGPT included) use an icon-only button with no label at
+  // all for our isSendButton heuristic to match, so a confident match is
+  // preferred, but failing that, a container with exactly one enabled
+  // button is treated as that button — ambiguous only when there is
+  // actually a choice to be ambiguous about.
   function findSendButton(el) {
     for (let node = el.parentElement, depth = 0; node && depth < 10; node = node.parentElement, depth++) {
-      const btn = [...node.querySelectorAll(BUTTON)].find((b) => isSendButton(b) && !b.disabled);
-      if (btn) return btn;
+      const candidates = [...node.querySelectorAll(BUTTON)].filter((b) => !b.disabled);
+      const confident = candidates.find(isSendButton);
+      if (confident) return confident;
+      if (candidates.length === 1) return candidates[0];
     }
     return null;
   }
@@ -471,10 +478,21 @@
     (e) => {
       if (e.composedPath().includes(host)) return; // our own banner buttons
       const btn = eventElement(e)?.closest?.(BUTTON);
-      if (!btn || !isSendButton(btn)) return;
       const el = activeInput?.isConnected ? activeInput : null;
-      if (!el) return;
-      if (holdSubmit(el, () => replay(() => btn.click()))) block(e);
+      if (!btn || !el) {
+        setStatus(`click ignored (button=${!!btn} activeInput=${!!el})`);
+        return;
+      }
+      // Same resolution findSendButton/resubmit use, not just isSendButton
+      // alone — many real send buttons (ChatGPT's included) are icon-only
+      // with no label for isSendButton to match by itself.
+      if (btn !== findSendButton(el)) {
+        setStatus(`click on unrelated button ignored`);
+        return;
+      }
+      const held = holdSubmit(el, () => replay(() => btn.click()));
+      setStatus(`send-button click held=${held} state=${state}`);
+      if (held) block(e);
     },
     true,
   );

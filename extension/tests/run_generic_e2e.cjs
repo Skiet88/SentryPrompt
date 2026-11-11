@@ -200,6 +200,28 @@ async function main() {
   assert(count(await logOf(p)) === 0 && (await bannerText(p)).includes("couldn't fully check"), "service down: the prompt is held with a 'couldn't fully check' banner");
   backendDown = false;
 
+  // 5b. Regression: an icon-only send button with no aria-label, no
+  // data-testid, no title and no type="submit" — a bare <button> with an
+  // <svg> inside, same as the real ChatGPT send button turned out to be.
+  // isSendButton alone can never match this; findSendButton's "exactly one
+  // enabled button nearby" fallback must be what holds it instead.
+  p = await open("rich");
+  await p.click(RICH);
+  await p.keyboard.type(FLAGGED);
+  await p.evaluate(() => {
+    const btn = document.querySelector("button[aria-label='Send prompt']");
+    btn.removeAttribute("aria-label");
+    btn.innerHTML = "<svg><path d='M0 0'></path></svg>";
+  });
+  await p.click("#slot button");
+  await p.waitForTimeout(100);
+  assert(count(await logOf(p)) === 0, "icon-only send button: instant click on flagged text is held back");
+  await p.waitForFunction(() => !!document.querySelector("[data-sentryprompt]").shadowRoot.querySelector(".banner.show"), null, { timeout: 5000 });
+  await clickBanner(p, ".hide");
+  await p.waitForTimeout(500);
+  log = await logOf(p);
+  assert(count(log) === 1 && log.includes("[REDACTED_SA_ID]") && !log.includes(ID), "icon-only send button: 'Hide details and send' sends the redacted text once");
+
   // 6. Logged out: nothing is screened or blocked (documented limitation).
   await popup.click("#logoutBtn");
   await popup.waitForSelector("#loginBtn");
