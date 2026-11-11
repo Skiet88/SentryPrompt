@@ -222,6 +222,29 @@ async function main() {
   log = await logOf(p);
   assert(count(log) === 1 && log.includes("[REDACTED_SA_ID]") && !log.includes(ID), "icon-only send button: 'Hide details and send' sends the redacted text once");
 
+  // 5c. Regression: more than one unlabelled button near the composer (a
+  // microphone plus send, as on Gemini) — "the only enabled button nearby"
+  // cannot disambiguate between them; the actual click must decide.
+  p = await open("multi");
+  await p.click(RICH);
+  await p.keyboard.type(FLAGGED);
+  await p.click("#send");
+  await p.waitForTimeout(100);
+  assert(count(await logOf(p)) === 0, "multiple buttons: instant click on the actual send button is still held back");
+  await p.waitForFunction(() => !!document.querySelector("[data-sentryprompt]").shadowRoot.querySelector(".banner.show"), null, { timeout: 5000 });
+  await clickBanner(p, ".sendAnyway");
+  await p.waitForTimeout(500);
+  log = await logOf(p);
+  assert(count(log) === 1 && log.includes(ID), "multiple buttons: 'Send anyway' sends the original once, via the correct button");
+  // The microphone is a different button in the same composer; clicking it
+  // must never leak the typed prompt as a sent message.
+  await p.click(RICH);
+  await p.keyboard.type("Some unrelated draft");
+  await p.click("#mic");
+  await p.waitForTimeout(1200);
+  log = await logOf(p);
+  assert(!log.includes("Some unrelated draft"), "multiple buttons: clicking the microphone never sends the drafted text");
+
   // 6. Logged out: nothing is screened or blocked (documented limitation).
   await popup.click("#logoutBtn");
   await popup.waitForSelector("#loginBtn");

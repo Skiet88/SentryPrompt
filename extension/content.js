@@ -15,7 +15,7 @@
   // doesn't show this exact tag after a reload, Chrome is still running an
   // older cached copy — that fact is now checkable by looking at the page,
   // not by guessing from symptoms.
-  const BUILD = "2026-11-11-preview-v3";
+  const BUILD = "2026-11-11-preview-v4";
   const tag = document.createElement("div");
   tag.textContent = `SentryPrompt build ${BUILD}`;
   tag.style.cssText =
@@ -52,16 +52,20 @@
   }
 
   function isSendButton(btn) {
-    if (btn.type === "submit") return true;
+    // type defaults to "submit" for ANY plain <button>, form or no form —
+    // only meaningful as a signal when there is an actual form it submits.
+    if (btn.type === "submit" && btn.form) return true;
     return ["aria-label", "data-testid", "title", "id"].some((a) => SEND_HINT.test(btn.getAttribute(a) ?? ""));
   }
 
-  // The send button near the prompt box, if the site has one. Many real
-  // composers (ChatGPT included) use an icon-only button with no label at
-  // all for our isSendButton heuristic to match, so a confident match is
-  // preferred, but failing that, a container with exactly one enabled
-  // button is treated as that button — ambiguous only when there is
-  // actually a choice to be ambiguous about.
+  // The send button near the prompt box, used only to resubmit after Enter
+  // was held back (there is no click event to reuse in that case, so one
+  // has to be found). Many real composers use an icon-only button with no
+  // label at all for isSendButton to match, so this also accepts a
+  // container with exactly one enabled button — but a composer with
+  // several buttons (a microphone, attachments, send) is genuinely
+  // ambiguous here, which is exactly why the click path below does not
+  // rely on this guess at all; it already knows which button was clicked.
   function findSendButton(el) {
     for (let node = el.parentElement, depth = 0; node && depth < 10; node = node.parentElement, depth++) {
       const candidates = [...node.querySelectorAll(BUTTON)].filter((b) => !b.disabled);
@@ -70,6 +74,17 @@
       if (candidates.length === 1) return candidates[0];
     }
     return null;
+  }
+
+  // Is candidate inside the same nearby container as the prompt box —
+  // without trying to also decide it is *the* send button among possibly
+  // several (mic, attachments, send). A real click already answers "which
+  // button," this only answers "is it part of this composer at all."
+  function nearInput(el, candidate) {
+    for (let node = el.parentElement, depth = 0; node && depth < 10; node = node.parentElement, depth++) {
+      if (node.contains(candidate)) return true;
+    }
+    return false;
   }
 
   function getText(el) {
@@ -483,10 +498,10 @@
         setStatus(`click ignored (button=${!!btn} activeInput=${!!el})`);
         return;
       }
-      // Same resolution findSendButton/resubmit use, not just isSendButton
-      // alone — many real send buttons (ChatGPT's included) are icon-only
-      // with no label for isSendButton to match by itself.
-      if (btn !== findSendButton(el)) {
+      // The click itself already answers "which button" — no label
+      // matching, no guessing between a mic/attachment/send button needed.
+      // Only question left: is it actually part of this composer at all.
+      if (!nearInput(el, btn)) {
         setStatus(`click on unrelated button ignored`);
         return;
       }
