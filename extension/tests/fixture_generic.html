@@ -43,8 +43,12 @@
         };
         root.querySelector("#mic").addEventListener("click", () => sent("MIC_CLICKED"));
         root.querySelector("#send").addEventListener("click", send);
+        // Deliberately NOT responding to a synthetic (isTrusted: false) Enter,
+        // the way some real composers only act on genuine keyboard input —
+        // resend after a banner decision must therefore work by reusing the
+        // actual clicked button, not by faking a keypress.
         box.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
+          if (e.key === "Enter" && !e.shiftKey && e.isTrusted) {
             e.preventDefault();
             send();
           }

@@ -15,7 +15,7 @@
   // doesn't show this exact tag after a reload, Chrome is still running an
   // older cached copy — that fact is now checkable by looking at the page,
   // not by guessing from symptoms.
-  const BUILD = "2026-11-11-preview-v4";
+  const BUILD = "2026-11-11-preview-v5";
   const tag = document.createElement("div");
   tag.textContent = `SentryPrompt build ${BUILD}`;
   tag.style.cssText =
@@ -200,6 +200,12 @@
   let activeInput = null;
   let inflight = null; // { text, promise } of the check now running
   let bypass = false; // true only while we replay a submit we held back
+  // The exact resend action for whatever is currently held back (reuses the
+  // real clicked button or submitted form, not a fresh guess at send time) —
+  // set the instant something is held, used once the student resolves the
+  // banner, so "Send anyway" after a button click clicks that same button
+  // rather than falling back to a synthetic keypress real sites can ignore.
+  let pendingResubmit = null;
 
   // Same plain-language labels as frontend/src/chat/categories.ts, kept in
   // sync manually (the extension has no build step to share code with the
@@ -398,6 +404,7 @@
     if (!text) return false;
     if (text === lastScreenedText && !inflight) {
       if (state === "pending") {
+        pendingResubmit = replaySubmit;
         showBanner(el);
         return true;
       }
@@ -406,9 +413,11 @@
     }
     if (debounceTimer) clearTimeout(debounceTimer);
     activeInput = el;
+    pendingResubmit = replaySubmit;
     screen(el).then((verdict) => {
       if (verdict === "clear") {
         forgetAfterSend(el, text);
+        pendingResubmit = null;
         replaySubmit();
       }
     });
@@ -426,9 +435,14 @@
     state = "resolved";
     hideBanner();
     const el = activeInput;
+    // The exact click or submit that was held back, if there was one —
+    // far more reliable than searching for a button fresh at this point,
+    // or falling back to a synthetic keypress a real site may just ignore.
+    const doResend = pendingResubmit ?? (() => resubmit(el));
+    pendingResubmit = null;
     // Let the page's editor absorb any text change before the send.
     setTimeout(() => {
-      resubmit(el);
+      doResend();
       // Sent: forget it, so the same text typed again is screened again.
       lastScreenedText = "";
       state = "clear";
