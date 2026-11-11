@@ -221,6 +221,28 @@
     state = "clear"; // the student is about to change the text; re-screen once they do
   });
 
+  // Screening is debounced and asynchronous (DEBOUNCE_MS, then a network
+  // round trip), but a student who finishes a short sentence and presses
+  // Enter right away will beat that every time — 800ms plus a network call
+  // is longer than most people pause between typing and submitting. So
+  // Enter/Send cannot simply check "is the result already in" (state ===
+  // "pending"); if the current text has never been screened, this forces
+  // an immediate check and holds the submit until it resolves, giving a
+  // fast typist the same fail-closed-until-cleared guarantee the debounced
+  // path already gives a slower one.
+  function interceptSubmit(el, resubmit) {
+    if (state === "pending") return true; // already known-flagged: block, banner is up
+    const currentText = getText(el).trim();
+    if (!currentText || currentText === lastScreenedText) return false; // already screened (or resolved) for this exact text
+    if (debounceTimer) clearTimeout(debounceTimer);
+    activeInput = el;
+    screen(el).then(() => {
+      if (state === "clear") resubmit();
+      // else "pending": screen() already showed the banner, nothing more to do.
+    });
+    return true; // block this attempt; the recheck above will resubmit if clear
+  }
+
   function attach(el) {
     if (el.dataset.sentrypromptAttached) return;
     el.dataset.sentrypromptAttached = "true";
@@ -233,10 +255,10 @@
       "keydown",
       (e) => {
         if (e.key !== "Enter" || e.shiftKey) return;
-        if (state === "pending") {
+        if (interceptSubmit(el, () => query(SEND_BUTTON_SELECTORS)?.click())) {
           e.preventDefault();
           e.stopPropagation();
-          showBanner(el);
+          if (state === "pending") showBanner(el);
         }
       },
       true,
@@ -249,10 +271,12 @@
     btn.addEventListener(
       "click",
       (e) => {
-        if (state === "pending") {
+        const el = activeInput || query(INPUT_SELECTORS);
+        if (!el) return;
+        if (interceptSubmit(el, () => btn.click())) {
           e.preventDefault();
           e.stopPropagation();
-          if (activeInput) showBanner(activeInput);
+          if (state === "pending") showBanner(el);
         }
       },
       true,
