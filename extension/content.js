@@ -160,14 +160,14 @@
     return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Sensitive information";
   }
 
-  function showUnchecked(el, kind) {
+  function showUnchecked(el, kind, detail) {
     state = "pending";
     currentFlags = [];
     headline.textContent = "We couldn't fully check this prompt";
     noticeEl.textContent =
       kind === "rate_limited"
         ? "Too many checks in the last minute. Wait a moment, or send anyway."
-        : "The screening service did not answer in time.";
+        : `The screening service did not answer in time.${detail ? ` (${detail})` : ""}`;
     flagsEl.innerHTML = "";
     hideBtn.style.display = "none";
     showBanner(el);
@@ -179,8 +179,11 @@
     let result;
     try {
       result = await chrome.runtime.sendMessage({ type: "SCREEN_PROMPT", text });
-    } catch {
-      result = { kind: "unavailable" };
+    } catch (err) {
+      // No response at all from background.js — e.g. the service worker
+      // itself failed to start. detail: message-port errors look identical
+      // to every other failure otherwise, so the real cause gets shown too.
+      result = { kind: "unavailable", detail: `sendMessage threw: ${err?.message || err}` };
     }
     if (getText(el).trim() !== text) return "stale";
     lastScreenedText = text;
@@ -192,7 +195,7 @@
       return "clear";
     }
     if (result?.kind !== "ok" || !result.data) {
-      showUnchecked(el, result?.kind);
+      showUnchecked(el, result?.kind, result?.detail);
       return "pending";
     }
     const data = result.data;

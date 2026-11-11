@@ -80,17 +80,16 @@ async function screenPrompt(text) {
   }
   let res;
   const url = `${CONFIG.BACKEND_URL}/api/prompts/screen`;
-  console.log("[SentryPrompt] screenPrompt: BACKEND_URL =", CONFIG.BACKEND_URL, "fetching", url);
   try {
     res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.accessToken}` },
       body: JSON.stringify({ text, channel: "extension" }),
     });
-    console.log("[SentryPrompt] screenPrompt: response status", res.status);
   } catch (err) {
-    console.error("[SentryPrompt] screenPrompt: fetch threw ->", err);
-    return { kind: "unavailable" };
+    // detail surfaces straight in the banner (content.js), so a screenshot
+    // of the page is enough to diagnose this — no DevTools required.
+    return { kind: "unavailable", detail: `fetch to ${url} threw: ${err?.message || err}` };
   }
   if (res.status === 401) {
     await clearSession();
@@ -100,7 +99,8 @@ async function screenPrompt(text) {
     return { kind: "rate_limited" };
   }
   if (!res.ok) {
-    return { kind: "unavailable" };
+    const body = await res.text().catch(() => "");
+    return { kind: "unavailable", detail: `HTTP ${res.status} from ${url}: ${body.slice(0, 200)}` };
   }
   const data = await res.json();
   return { kind: "ok", data };
