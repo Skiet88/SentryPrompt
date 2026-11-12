@@ -30,7 +30,25 @@
       const mode = new URLSearchParams(location.search).get("mode") || "rich";
       const sent = (text) => (log.textContent += "SUBMITTED: " + text + "\n");
 
-      if (mode === "propeditable") {
+      if (mode === "deepnested") {
+        // The send button sits several wrapper levels above the editable
+        // root itself (not the one level in "rich"/"multi") — exercising
+        // findSendButton's/nearInput's own multi-level ancestor climb from
+        // the composer root toward the button. Generic structural case
+        // (a composer nested inside several layout wrappers), not modelled
+        // on any one site.
+        root.innerHTML =
+          '<div class="composer"><div class="wrap1"><div class="wrap2"><div class="wrap3">' +
+          '<div class="box" contenteditable="true"></div>' +
+          '</div></div></div><button id="send"><svg></svg></button></div>';
+        const box = root.querySelector(".box");
+        root.querySelector("#send").addEventListener("click", () => {
+          const text = box.innerText.trim();
+          if (!text) return;
+          sent(text);
+          box.textContent = "";
+        });
+      } else if (mode === "propeditable") {
         // No contenteditable HTML attribute at all — set only via the JS
         // property, the exact gap a CSS attribute selector cannot see
         // (isContentEditable is the browser's own resolved answer and

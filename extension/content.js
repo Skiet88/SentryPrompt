@@ -15,7 +15,7 @@
   // doesn't show this exact tag after a reload, Chrome is still running an
   // older cached copy — that fact is now checkable by looking at the page,
   // not by guessing from symptoms.
-  const BUILD = "2026-11-12-preview-v8";
+  const BUILD = "2026-11-12-preview-v9";
   const tag = document.createElement("div");
   tag.textContent = `SentryPrompt build ${BUILD}`;
   tag.style.cssText =
@@ -49,13 +49,18 @@
   // isContentEditable is the browser's own resolved answer to "is this
   // editable," covering every way a site can set it (contenteditable="true",
   // "", "plaintext-only", or just the JS property with no attribute at all
-  // reflected back — which is exactly the gap a CSS attribute selector
-  // missed on Claude's composer). It is also true for every descendant of
-  // an editable root, so climb to the outermost one: that is the actual
-  // edit boundary getText/setText need, not an arbitrary inner node.
+  // reflected back — the gap a CSS attribute selector missed on Claude's
+  // composer). It is also true for every descendant of an editable root, so
+  // this climbs from the innermost match up to the outermost one still
+  // editable — the true root of the region, which is what getText/setText
+  // and a nearby button search both need, not an arbitrary inner node. Any
+  // site-specific override (e.g. ChatGPT below) must tolerate receiving this
+  // wider element rather than assuming the exact innermost one.
   function editableFrom(event) {
     let el = eventElement(event);
     while (el && el.tagName !== "TEXTAREA" && !el.isContentEditable) el = el.parentElement;
+    if (!el || el.tagName === "TEXTAREA") return el;
+    while (el.parentElement?.isContentEditable) el = el.parentElement;
     return el;
   }
 
@@ -392,20 +397,32 @@
   // while every other site in that extension's table resends by dispatching
   // Enter directly, never clicking anything. Adapted from that project
   // (masachika-kamada/ChatGPT-Ctrl-Enter-Sender, content/ctrl-enter-handler.js).
+  // editableFrom now climbs to the outermost editable ancestor, so el here
+  // may be that wider element rather than the exact node these identity
+  // checks were written against — search within el for it instead of
+  // requiring el itself to be the match.
+  function findWithin(el, selector) {
+    return el.matches?.(selector) ? el : el.querySelector?.(selector) ?? null;
+  }
+
   const RESUBMIT_OVERRIDES = {
     "chatgpt.com": (el) => {
-      if (el.id !== "prompt-textarea" && !el.hasAttribute?.("data-composer-markdown")) return false;
-      const button = el.closest("form")?.querySelector('button[type="submit"]:not([disabled])');
+      const target = findWithin(el, "#prompt-textarea, [data-composer-markdown]");
+      if (!target) return false;
+      const button = target.closest("form")?.querySelector('button[type="submit"]:not([disabled])');
       if (!button) return false;
       replay(() => button.click());
       return true;
     },
     "chat.openai.com": (el) => RESUBMIT_OVERRIDES["chatgpt.com"](el),
     "gemini.google.com": (el) => {
-      const isComposer =
-        el.tagName === "TEXTAREA" || (el.tagName === "DIV" && el.classList.contains("ql-editor"));
-      if (!isComposer) return false;
-      replay(() => dispatchEnter(el));
+      if (el.tagName === "TEXTAREA") {
+        replay(() => dispatchEnter(el));
+        return true;
+      }
+      const target = findWithin(el, "div.ql-editor");
+      if (!target) return false;
+      replay(() => dispatchEnter(target));
       return true;
     },
   };
