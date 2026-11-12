@@ -15,7 +15,7 @@
   // doesn't show this exact tag after a reload, Chrome is still running an
   // older cached copy — that fact is now checkable by looking at the page,
   // not by guessing from symptoms.
-  const BUILD = "2026-11-12-preview-v7";
+  const BUILD = "2026-11-12-preview-v8";
   const tag = document.createElement("div");
   tag.textContent = `SentryPrompt build ${BUILD}`;
   tag.style.cssText =
@@ -56,9 +56,6 @@
   function editableFrom(event) {
     let el = eventElement(event);
     while (el && el.tagName !== "TEXTAREA" && !el.isContentEditable) el = el.parentElement;
-    if (!el) return null;
-    if (el.tagName === "TEXTAREA") return el;
-    while (el.parentElement?.isContentEditable) el = el.parentElement;
     return el;
   }
 
