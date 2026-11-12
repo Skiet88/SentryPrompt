@@ -30,7 +30,28 @@
       const mode = new URLSearchParams(location.search).get("mode") || "rich";
       const sent = (text) => (log.textContent += "SUBMITTED: " + text + "\n");
 
-      if (mode === "multi") {
+      if (mode === "propeditable") {
+        // No contenteditable HTML attribute at all — set only via the JS
+        // property, the exact gap a CSS attribute selector cannot see
+        // (isContentEditable is the browser's own resolved answer and
+        // catches this regardless of how it was set).
+        root.innerHTML = '<div class="box" role="textbox"></div><button id="send"><svg></svg></button>';
+        const box = root.querySelector(".box");
+        box.contentEditable = "true";
+        const send = () => {
+          const text = box.innerText.trim();
+          if (!text) return;
+          sent(text);
+          box.textContent = "";
+        };
+        root.querySelector("#send").addEventListener("click", send);
+        box.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            send();
+          }
+        });
+      } else if (mode === "multi") {
         root.innerHTML =
           '<div class="composer"><div class="box ProseMirror" contenteditable="true" role="textbox" aria-label="Ask"></div>' +
           '<button id="mic"><svg></svg></button><button id="send"><svg></svg></button></div>';

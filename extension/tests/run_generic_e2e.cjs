@@ -245,6 +245,30 @@ async function main() {
   log = await logOf(p);
   assert(!log.includes("Some unrelated draft"), "multiple buttons: clicking the microphone never sends the drafted text");
 
+  // 5d. Regression: a contenteditable set only via the JS property, with no
+  // "contenteditable" HTML attribute at all — a CSS attribute selector
+  // cannot see this; isContentEditable must be what finds it.
+  p = await open("propeditable");
+  await p.click(RICH);
+  await p.keyboard.type(FLAGGED);
+  await p.keyboard.press("Enter");
+  await p.waitForTimeout(1200);
+  assert(count(await logOf(p)) === 0 && (await bannerShown(p)), "property-only contenteditable: instant Enter on flagged text is held and flagged");
+  await clickBanner(p, ".sendAnyway");
+  await p.waitForTimeout(500);
+  log = await logOf(p);
+  assert(count(log) === 1 && log.includes(ID), "property-only contenteditable: 'Send anyway' sends the original once");
+  await p.click(RICH);
+  await p.keyboard.type(FLAGGED);
+  await p.click("#send");
+  await p.waitForTimeout(100);
+  assert(count(await logOf(p)) === 1, "property-only contenteditable: instant click on flagged text is held back too");
+  await p.waitForFunction(() => !!document.querySelector("[data-sentryprompt]").shadowRoot.querySelector(".banner.show"), null, { timeout: 5000 });
+  await clickBanner(p, ".hide");
+  await p.waitForTimeout(500);
+  log = await logOf(p);
+  assert(count(log) === 2 && log.includes("[REDACTED_SA_ID]"), "property-only contenteditable: 'Hide details and send' sends the redacted text");
+
   // 6. Logged out: nothing is screened or blocked (documented limitation).
   await popup.click("#logoutBtn");
   await popup.waitForSelector("#loginBtn");

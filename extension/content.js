@@ -15,7 +15,7 @@
   // doesn't show this exact tag after a reload, Chrome is still running an
   // older cached copy — that fact is now checkable by looking at the page,
   // not by guessing from symptoms.
-  const BUILD = "2026-11-11-preview-v6";
+  const BUILD = "2026-11-12-preview-v7";
   const tag = document.createElement("div");
   tag.textContent = `SentryPrompt build ${BUILD}`;
   tag.style.cssText =
@@ -38,7 +38,6 @@
   }
 
   const DEBOUNCE_MS = 800;
-  const EDITABLE = "textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']";
   const BUTTON = "button, [role='button'], input[type='submit']";
   const SEND_HINT = /send|submit/i;
 
@@ -47,8 +46,20 @@
     return node instanceof Element ? node : (node?.parentElement ?? null);
   }
 
+  // isContentEditable is the browser's own resolved answer to "is this
+  // editable," covering every way a site can set it (contenteditable="true",
+  // "", "plaintext-only", or just the JS property with no attribute at all
+  // reflected back — which is exactly the gap a CSS attribute selector
+  // missed on Claude's composer). It is also true for every descendant of
+  // an editable root, so climb to the outermost one: that is the actual
+  // edit boundary getText/setText need, not an arbitrary inner node.
   function editableFrom(event) {
-    return eventElement(event)?.closest?.(EDITABLE) ?? null;
+    let el = eventElement(event);
+    while (el && el.tagName !== "TEXTAREA" && !el.isContentEditable) el = el.parentElement;
+    if (!el) return null;
+    if (el.tagName === "TEXTAREA") return el;
+    while (el.parentElement?.isContentEditable) el = el.parentElement;
+    return el;
   }
 
   function isSendButton(btn) {
